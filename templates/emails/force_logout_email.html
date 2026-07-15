@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+{% load static %}
+<!--
+    ============================================================================
+    LFC CHURCH MANAGEMENT SYSTEM — FORCED LOGOUT EMAIL
+    ============================================================================
+    File: templates/emails/force_logout_email.html
+    Sent when: An admin/superadmin forcibly terminates a user's active
+               session(s) (e.g. via Security > Active Sessions > Force Logout),
+               or the system auto-terminates sessions after a security event.
+
+    DESIGN NOTES:
+    ----------------------------------------------------------------------------
+    - Amber "alert" badge (not red/critical, not neutral) — this sits between
+      a routine notice and a critical breach warning: something deliberate
+      happened to the account, but it's an administrative security action,
+      not necessarily evidence of compromise.
+    - Primary CTA takes the user straight back to login, since the practical
+      next step is simply "sign back in."
+    - Info card documents WHO triggered it, WHEN, and WHY (reason is often
+      set by the admin performing the action, e.g. "Suspicious activity",
+      "Routine security sweep", "Staff offboarding").
+    - Security notice reinforces that this may have been deliberate (by an
+      admin) OR precautionary — sets the right expectation either way.
+
+    EXPECTED CONTEXT VARIABLES:
+    ----------------------------------------------------------------------------
+    user_name               - Staff full name
+    church_name             - LFC Church
+    system_name             - Church Management System
+    logged_out_at           - Human-readable timestamp
+    triggered_by            - Admin name or "System"
+    reason                  - Logout reason
+    login_url               - Frontend admin login URL
+    user_email              - User email address
+    support_email           - settings.DEFAULT_FROM_EMAIL
+    support_phone           - Church contact number
+    current_year            - timezone.now().year
+    ============================================================================
+-->
+
+{% block title %}You've Been Signed Out — {{ church_name|default:"LFC Church" }} {{ system_name|default:"Church Management System" }}{% endblock %}
+
+{% block preheader %}
+    Your active sessions on {{ church_name|default:"LFC Church" }} {{ system_name|default:"Church Management System" }} were signed out on {{ logged_out_at|default:"recently" }}.
+{% endblock %}
+
+{% block header_tagline %}Security Action{% endblock %}
+
+{% block extra_style %}
+<style>
+    .lfc-icon-badge-wrap--alert {
+        background-color: #FFFBEB;
+    }
+    .lfc-btn-shadow a.lfc-btn {
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.20);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+    <!-- ============ ICON BADGE (amber — deliberate security action) ============ -->
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+            <td align="center" style="padding-bottom: 24px;">
+                <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                    <tr>
+                        <td class="lfc-icon-badge-wrap--alert" width="64" height="64" align="center" valign="middle"
+                            style="background-color:#FFFBEB; border-radius:50%; width:64px; height:64px;">
+                            <img src="{{ header_image_url }}" width="28" height="28" alt="Signed out" style="display:block;">
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+
+    <!-- ============ HEADING ============ -->
+    <h1 class="lfc-heading" style="text-align: center;">You've been signed out</h1>
+
+    <!-- ============ BODY COPY ============ -->
+    <p class="lfc-body-text" style="text-align: center;">
+        Hi {{ user_name|default:"there" }}, one or more active sessions on your
+        <strong>{{ church_name|default:"LFC Church" }} {{ system_name|default:"Church Management System" }}</strong>
+        account were terminated by
+        <strong>{{ triggered_by|default:"an administrator" }}</strong>.
+        For your security, you'll need to sign in again to continue using the system.
+    </p>
+
+    <!-- ============ CTA BUTTON ============ -->
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 8px 0 28px 0;">
+        <tr>
+            <td align="center">
+                <table role="presentation" cellpadding="0" cellspacing="0" border="0" class="lfc-btn-shadow">
+                    <tr>
+                        <td class="lfc-btn-wrap" style="border-radius:8px;" align="center">
+                            <a href="{{ login_url }}" class="lfc-btn" target="_blank" rel="noopener"
+                               style="font-size:15px; font-weight:600; color:#FFFFFF; text-decoration:none; padding:13px 36px; border-radius:8px; display:inline-block; background-color:#2563EB; border:1px solid #1D4ED8;">
+                                Sign In Again
+                            </a>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+
+    <!-- ============ REUSABLE INFO CARD: Logout details ============ -->
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="lfc-info-card" style="background-color:#F8FAFC; border:1px solid #E2E8F0; border-radius:10px; margin-bottom: 8px;">
+        <tr>
+            <td class="lfc-info-card-inner" style="padding: 20px 24px;">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                    <tr>
+                        <td width="50%" valign="top" style="padding-bottom: 14px;">
+                            <span class="lfc-info-label">Signed Out At</span><br>
+                            <span class="lfc-info-value">{{ logged_out_at|default:"—" }}</span>
+                        </td>
+                        <td width="50%" valign="top" style="padding-bottom: 14px;">
+                            <span class="lfc-info-label">Affected Account</span><br>
+                            <span class="lfc-info-value">{{ user_email|default:"—" }}</span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td width="50%" valign="top">
+                            <span class="lfc-info-label">Triggered By</span><br>
+                            <span class="lfc-info-value">{{ triggered_by|default:"—" }}</span>
+                        </td>
+                        <td width="50%" valign="top">
+                            <span class="lfc-info-label">Reason</span><br>
+                            <span class="lfc-info-value">{{ reason|default:"Not specified" }}</span>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+{% endblock %}
+
+{% block security_notice %}
+    <tr>
+        <td style="padding: 8px 40px 8px 40px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="lfc-security-notice" style="background-color:#FFFBEB; border:1px solid #FDE68A; border-left:3px solid #F59E0B; border-radius:8px;">
+                <tr>
+                    <td class="lfc-security-notice-inner" style="padding: 16px 20px;">
+                        <p class="lfc-security-notice-title">Why did this happen?</p>
+                        <p class="lfc-security-notice-text">
+                            This may have been a routine security action or a precaution taken by the
+                            {{ church_name|default:"LFC Church" }} administration. If you were not expecting this action or are unable to sign in again,
+                            please
+                            <a href="{{ login_url }}" style="color:#92400E; font-weight:700; text-decoration:underline;">sign in to your account</a>
+                            or contact the {{ church_name|default:"LFC Church" }} administration immediately.
+                        </p>
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+{% endblock %}

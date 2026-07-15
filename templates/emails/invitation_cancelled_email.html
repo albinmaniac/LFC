@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% load static %}
+<!--
+    ============================================================================
+    LFC CHURCH MANAGEMENT SYSTEM — INVITATION CANCELLED EMAIL
+    ============================================================================
+    File: templates/emails/invitation_cancelled_email.html
+    Sent when: A pending staff invitation is revoked/cancelled by an
+               admin/superadmin before it was accepted.
+
+    DESIGN NOTES:
+    ----------------------------------------------------------------------------
+    - Neutral slate-gray badge (not red/alarming, not green/celebratory) —
+      this is a routine administrative action, not an error or a warning.
+    - No primary CTA — there's nothing actionable for the recipient to do,
+      so the layout stays calm and low-emphasis (no button = no false urgency).
+    - Info card documents what was cancelled (role, parish, cancelled by/when)
+      for transparency, consistent with the rest of the template family.
+    - Security notice is softened to informational tone here — this event
+      is expected admin behavior, not a signal of compromise, so it uses the
+      standard amber "notice" style rather than the red "critical" variant.
+
+    EXPECTED CONTEXT VARIABLES:
+    ----------------------------------------------------------------------------
+    invitee_name   - Full name of the invited staff
+    church_name    - Church name
+    role_display   - Offered role
+    cancelled_by   - Admin/Superadmin who cancelled the invitation
+    cancelled_at   - Human-readable timestamp
+    support_email  - Support email address
+    support_phone  - Church contact number
+    current_year   - timezone.now().year
+    ============================================================================
+-->
+
+{% block title %}Invitation Cancelled — LFC Church Management System{% endblock %}
+
+{% block preheader %}
+    Your invitation to join {{ church_name|default:"LFC Church" }} has been cancelled by the church administration.
+{% endblock %}
+
+{% block header_tagline %}Invitation Update{% endblock %}
+
+{% block extra_style %}
+<style>
+    .lfc-icon-badge-wrap--neutral {
+        background-color: #F1F5F9;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+    <!-- ============ ICON BADGE (neutral slate — routine admin action) ============ -->
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+            <td align="center" style="padding-bottom: 24px;">
+                <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                    <tr>
+                        <td class="lfc-icon-badge-wrap--neutral" width="64" height="64" align="center" valign="middle"
+                            style="background-color:#F1F5F9; border-radius:50%; width:64px; height:64px;">
+                            <img src="{{ header_image_url }}" width="28" height="28" alt="Invitation cancelled" style="display:block;">
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+
+    <!-- ============ HEADING ============ -->
+    <h1 class="lfc-heading" style="text-align: center;">Your invitation has been cancelled</h1>
+
+    <!-- ============ BODY COPY ============ -->
+    <p class="lfc-body-text" style="text-align: center;">
+        Hi {{ invitee_name|default:"there" }}, your pending invitation to join
+        <strong>{{ church_name|default:"LFC Church" }}</strong> through the
+        {{ system_name|default:"Church Management System" }}
+        has been cancelled by the church administration.
+        The invitation link has been permanently disabled and can no longer be used.
+    </p>
+
+    <!-- ============ REUSABLE INFO CARD: Cancellation details ============ -->
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="lfc-info-card" style="background-color:#F8FAFC; border:1px solid #E2E8F0; border-radius:10px; margin: 20px 0 28px 0;">
+        <tr>
+            <td class="lfc-info-card-inner" style="padding: 20px 24px;">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                    <tr>
+                        <td width="50%" valign="top" style="padding-bottom: 14px;">
+                            <span class="lfc-info-label">Church</span><br>
+                            <span class="lfc-info-value">{{ church_name|default:"—" }}</span>
+                        </td>
+                        <td width="50%" valign="top" style="padding-bottom: 14px;">
+                            <span class="lfc-info-label">Offered Role</span><br>
+                            <span class="lfc-info-value">{{ role_display|default:"—" }}</span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td width="50%" valign="top">
+                            <span class="lfc-info-label">Cancelled By</span><br>
+                            <span class="lfc-info-value">{{ cancelled_by|default:"—" }}</span>
+                        </td>
+                        <td width="50%" valign="top">
+                            <span class="lfc-info-label">Cancelled At</span><br>
+                            <span class="lfc-info-value">{{ cancelled_at|default:"—" }}</span>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+
+    <p class="lfc-body-text" style="text-align: center; margin-bottom: 0;">
+        If you believe this cancellation was made in error or you still require access,
+        please contact the church administration using the contact information below.
+    </p>
+{% endblock %}
+
+{% block security_notice %}
+    <tr>
+        <td style="padding: 8px 40px 8px 40px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="lfc-security-notice" style="background-color:#FFFBEB; border:1px solid #FDE68A; border-left:3px solid #F59E0B; border-radius:8px;">
+                <tr>
+                    <td class="lfc-security-notice-inner" style="padding: 16px 20px;">
+                        <p class="lfc-security-notice-title">No action needed</p>
+                        <p class="lfc-security-notice-text">
+                            No account has been created for this invitation, and the secure invitation link
+                            has been permanently disabled. If you have any questions or believe this action
+                            was taken by mistake, please contact the church administration at
+                            <a href="mailto:{{ support_email|default:'support@lfcchurch.org' }}" style="color:#92400E; font-weight:700; text-decoration:underline;">
+                                {{ support_email|default:"support@lfcchurch.org" }}
+                            </a>.
+                        </p>
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+{% endblock %}

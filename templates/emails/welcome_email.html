@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+{% load static %}
+<!--
+    ============================================================================
+    LFC CHURCH MANAGEMENT SYSTEM — WELCOME EMAIL
+    ============================================================================
+    File: templates/emails/welcome_email.html
+    Sent when: A new staff account is created and ready to use (post-invitation
+               acceptance, or direct account creation by a superadmin).
+
+    DESIGN NOTES:
+    ----------------------------------------------------------------------------
+    - Celebratory but professional tone — a "Welcome aboard" badge instead of
+      a lock/warning icon (this is a positive-intent email, not a security one).
+    - Adds a 3-item "Getting Started" checklist using a reusable row component
+      (icon + text pairs) — a step up from a plain bullet list, feels like a
+      genuine onboarding flow (Notion/Linear-style).
+    - Role + parish shown as a two-column info card, consistent with the
+      invitation email so the visual language stays coherent across the suite.
+    - Accent strip + icon badge pattern (introduced in password_reset_email)
+      is reused here for visual consistency across the template family.
+
+    EXPECTED CONTEXT VARIABLES:
+    ----------------------------------------------------------------------------
+   user_name             # Staff full name
+    church_name           # Church name
+    role_display          # Display role
+    login_url             # Admin login URL
+    email                 # Login email
+    support_email         # Support email
+    support_phone         # Church contact number
+    current_year          # timezone.now().year
+    ============================================================================
+-->
+
+{% block title %}Welcome to LFC Church Management System{% endblock %}
+
+{% block preheader %}
+    Your account is ready. Welcome to {{ church_name|default:"LFC Church" }}.
+{% endblock %}
+
+{% block header_tagline %}
+Welcome to the Team
+{% endblock %}
+
+{% block extra_style %}
+<style>
+    .lfc-icon-badge-wrap--success {
+        background-color: #ECFDF5;
+    }
+    .lfc-checklist-icon {
+        background-color: #EFF6FF;
+        border-radius: 50%;
+        width: 28px;
+        height: 28px;
+    }
+    .lfc-checklist-text {
+        font-size: 14px;
+        line-height: 20px;
+        color: #334155;
+        font-weight: 500;
+    }
+    .lfc-btn-shadow a.lfc-btn {
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.28);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+    <!-- ============ ICON BADGE (celebratory, green-tinted) ============ -->
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+            <td align="center" style="padding-bottom: 24px;">
+                <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                    <tr>
+                        <td class="lfc-icon-badge-wrap--success" width="64" height="64" align="center" valign="middle"
+                            style="background-color:#ECFDF5; border-radius:50%; width:64px; height:64px;">
+                            <img src="{{ header_image_url }}" width="30" height="30" alt="Welcome" style="display:block;">
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+
+    <!-- ============ HEADING ============ -->
+    <h1 class="lfc-heading" style="text-align: center;">Welcome, {{ user_name|default:"there" }} 👋</h1>
+
+    <!-- ============ BODY COPY ============ -->
+    <p class="lfc-body-text" style="text-align: center;">
+        Your account is ready. You've officially joined <strong>{{ church_name|default:"LFC Church" }}</strong>
+        on the LFC Church Management System — we're glad to have you on the team.
+    </p>
+
+    <!-- ============ CTA BUTTON ============ -->
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 8px 0 32px 0;">
+        <tr>
+            <td align="center">
+                <table role="presentation" cellpadding="0" cellspacing="0" border="0" class="lfc-btn-shadow">
+                    <tr>
+                        <td class="lfc-btn-wrap" style="border-radius:8px;" align="center">
+                            <a href="{{ login_url }}" class="lfc-btn" target="_blank" rel="noopener"
+                               style="font-size:15px; font-weight:600; color:#FFFFFF; text-decoration:none; padding:13px 36px; border-radius:8px; display:inline-block; background-color:#2563EB; border:1px solid #1D4ED8;">
+                                Go to Dashboard
+                            </a>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+
+    <!-- ============ REUSABLE INFO CARD: Account details ============ -->
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="lfc-info-card" style="background-color:#F8FAFC; border:1px solid #E2E8F0; border-radius:10px; margin-bottom: 28px;">
+        <tr>
+            <td class="lfc-info-card-inner" style="padding: 20px 24px;">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                    <tr>
+                        <td width="50%" valign="top" style="padding-bottom: 14px;">
+                            <span class="lfc-info-label">Parish</span><br>
+                            <span class="lfc-info-value">{{ church_name|default:"LFC Church" }}</span>
+                        </td>
+                        <td width="50%" valign="top" style="padding-bottom: 14px;">
+                            <span class="lfc-info-label">Role</span><br>
+                            <span class="lfc-info-value">{{ role_display|default:"—" }}</span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td colspan="2">
+                            <span class="lfc-info-label">Login Email / Username</span><br>
+                            <span class="lfc-info-value">{{ user_email|default:"—" }}</span>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+
+    <!-- ============ GETTING STARTED CHECKLIST (Notion/Linear-style) ============ -->
+    <p class="lfc-body-text" style="font-weight: 700; color: #0F172A; margin-bottom: 14px;">Getting started</p>
+
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom: 8px;">
+        <tr>
+            <td valign="top" style="padding-bottom: 16px;">
+                <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                    <tr>
+                        <td class="lfc-checklist-icon" align="center" valign="middle" style="background-color:#EFF6FF; border-radius:50%; width:28px; height:28px;">
+                            <span style="font-size:13px; font-weight:700; color:#2563EB;">1</span>
+                        </td>
+                        <td style="padding-left: 12px;">
+                            <span class="lfc-checklist-text">Log in and complete your staff profile</span>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+        <tr>
+            <td valign="top" style="padding-bottom: 16px;">
+                <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                    <tr>
+                        <td class="lfc-checklist-icon" align="center" valign="middle" style="background-color:#EFF6FF; border-radius:50%; width:28px; height:28px;">
+                            <span style="font-size:13px; font-weight:700; color:#2563EB;">2</span>
+                        </td>
+                        <td style="padding-left: 12px;">
+                            <span class="lfc-checklist-text">Review the modules assigned to your role</span>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+        <tr>
+            <td valign="top">
+                <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                    <tr>
+                        <td class="lfc-checklist-icon" align="center" valign="middle" style="background-color:#EFF6FF; border-radius:50%; width:28px; height:28px;">
+                            <span style="font-size:13px; font-weight:700; color:#2563EB;">3</span>
+                        </td>
+                        <td style="padding-left: 12px;">
+                            <span class="lfc-checklist-text">Review your account settings and keep your password secure.</span>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+{% endblock %}
+
+{% block security_notice %}
+    <tr>
+        <td style="padding: 0 40px 8px 40px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="lfc-security-notice" style="background-color:#FFFBEB; border:1px solid #FDE68A; border-left:3px solid #F59E0B; border-radius:8px;">
+                <tr>
+                    <td class="lfc-security-notice-inner" style="padding: 16px 20px;">
+                        <p class="lfc-security-notice-title">Keep your account secure</p>
+                        <p class="lfc-security-notice-text">
+                            Never share your login credentials with anyone. LFC staff will never ask for your
+                            password over email or phone.
+                        </p>
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+{% endblock %}

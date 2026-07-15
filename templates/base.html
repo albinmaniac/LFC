@@ -1,0 +1,511 @@
+{% load static %}<!DOCTYPE html>
+<!--
+    ============================================================================
+    LFC CHURCH MANAGEMENT SYSTEM — MASTER EMAIL LAYOUT
+    ============================================================================
+    File:        templates/base.html
+    Purpose:     Base layout for ALL transactional/system emails.
+
+    DESIGN SYSTEM — SAGE / MINT PALETTE
+    ----------------------------------------------------------------------------
+    - Layout engine : Table-based (bulletproof for Outlook/Gmail/Apple Mail)
+    - Typography    : Inter -> Segoe UI -> Roboto -> Arial -> sans-serif
+    - Palette       : Deep Forest (#16221A) -> Sage (#90AB8B) gradient header
+                      Soft mint body background (#EBF4DD)
+                      White rounded content card (#FFFFFF)
+                      Muted teal-sage accents (#9CAFAA)
+                      Deep forest footer (#16221A)
+    - Semantic colors (amber alert / red critical / green success) are kept
+      universal rather than re-themed — alerts need to read as alerts
+      regardless of brand palette, so they intentionally break from the
+      sage/mint system for contrast and recognizability.
+    - Components    : header, content card, info-card, security-notice,
+                      cta-button, contact-section, footer (all overridable
+                      via Django blocks / context variables below)
+
+    CONTEXT VARIABLES (pass these from your view — used across the header
+    and footer on every email, in addition to whatever each child template
+    defines for its own body content):
+    ----------------------------------------------------------------------------
+    logo_url                      - str : Absolute URL to the church logo image
+    church_name                   - str : Church/parish display name
+    system_name                   - str : Tagline under the church name in the header
+    support_email                 - str : Support contact email
+    support_phone                 - str : Support contact phone number
+    church_address                - str : Postal address shown in the footer
+    footer_link_privacy_url       - str : Privacy policy URL
+    footer_link_terms_url         - str : Terms of service URL
+    footer_link_unsubscribe_url   - str : Unsubscribe URL
+    current_year                  - str/int : Year shown in the copyright line
+
+    COMPATIBILITY NOTES
+    ----------------------------------------------------------------------------
+    - No Word-generated markup. Hand-authored, semantic, email-safe HTML only.
+    - All layout uses <table> + <td> — NO CSS grid/flexbox for structure.
+    - Styles are written both in a <style> block (for clients that support it,
+      e.g. Apple Mail, Gmail app, modern webmail) AND critical styles are
+      duplicated inline on key elements (for Outlook / stripped-<style> clients).
+    - MSO (Outlook/Word rendering engine) conditional comments handle Outlook's
+      Word-based rendering quirks (fixed table widths, font fallback, spacing).
+    - Max content width: 600px (industry-standard safe width).
+    - Uses role="presentation" on all layout tables to keep them accessible
+      (screen readers skip them; real content remains in normal reading order).
+    ============================================================================
+-->
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="color-scheme" content="light">
+    <meta name="supported-color-schemes" content="light">
+    <!--[if mso]>
+    <noscript>
+        <xml>
+            <o:OfficeDocumentSettings>
+                <o:PixelsPerInch>96</o:PixelsPerInch>
+                <o:AllowPNG/>
+            </o:OfficeDocumentSettings>
+        </xml>
+    </noscript>
+    <![endif]-->
+    <title>{% block title %}LFC Church Management System{% endblock %}</title>
+
+    <style>
+        /* ====================================================================
+           RESET — neutralize client default styles
+        ==================================================================== */
+        html, body {
+            margin: 0 !important;
+            padding: 0 !important;
+            height: 100% !important;
+            width: 100% !important;
+            background-color: #EBF4DD;
+        }
+        * {
+            -ms-text-size-adjust: 100%;
+            -webkit-text-size-adjust: 100%;
+        }
+        table, td {
+            mso-table-lspace: 0pt !important;
+            mso-table-rspace: 0pt !important;
+            border-collapse: collapse !important;
+        }
+        img {
+            border: 0;
+            outline: none;
+            text-decoration: none;
+            -ms-interpolation-mode: bicubic;
+            display: block;
+        }
+        .lfc-header-logo {
+            width: 44px !important;
+            max-width: 44px !important;
+            height: auto !important;
+        }
+        a {
+            text-decoration: none;
+        }
+        body {
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        /* ====================================================================
+           TYPOGRAPHY — Inter with robust cross-client fallbacks
+        ==================================================================== */
+        body, table, td, a, span, p, h1, h2, h3 {
+            font-family: 'Inter', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        /* ====================================================================
+           BRAND HEADER — Deep Forest to Sage gradient
+           (fallback solid color for Outlook, which ignores linear-gradient)
+        ==================================================================== */
+        .lfc-header {
+            background-color: #4C6B49; /* Outlook / no-gradient fallback (gradient midpoint) */
+            background-image: linear-gradient(135deg, #16221A 0%, #4C6B49 50%, #90AB8B 100%);
+        }
+        .lfc-header-logo-text {
+            font-size: 20px;
+            font-weight: 700;
+            color: #FFFFFF;
+            letter-spacing: 0.3px;
+        }
+        .lfc-header-tagline {
+            font-size: 12px;
+            font-weight: 500;
+            color: #D7E4C9;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+        }
+
+        /* ====================================================================
+           CONTENT CARD — white, rounded, elevated
+        ==================================================================== */
+        .lfc-card {
+            background-color: #FFFFFF;
+            border-radius: 12px;
+            border: 1px solid #D7E4C9;
+        }
+        .lfc-card-inner {
+            padding: 40px 40px;
+        }
+        .lfc-heading {
+            font-size: 22px;
+            line-height: 30px;
+            font-weight: 700;
+            color: #1F2A22;
+            margin: 0 0 16px 0;
+        }
+        .lfc-body-text {
+            font-size: 15px;
+            line-height: 24px;
+            font-weight: 400;
+            color: #4B5C50;
+            margin: 0 0 16px 0;
+        }
+        .lfc-body-text strong {
+            color: #1F2A22;
+            font-weight: 600;
+        }
+
+        /* ====================================================================
+           CTA BUTTON — Stripe/Linear-style solid pill button, sage brand color
+        ==================================================================== */
+        .lfc-btn-wrap {
+            border-radius: 8px;
+            background-color: #90AB8B;
+        }
+        .lfc-btn {
+            font-size: 15px;
+            font-weight: 600;
+            color: #FFFFFF !important;
+            text-decoration: none;
+            padding: 13px 32px;
+            border-radius: 8px;
+            display: inline-block;
+            background-color: #90AB8B;
+            border: 1px solid #6F8A6A;
+        }
+        .lfc-btn-secondary {
+            background-color: #FFFFFF !important;
+            color: #4C6B49 !important;
+            border: 1px solid #C3D4B8 !important;
+        }
+
+        /* ====================================================================
+           INFO CARD — reusable soft-mint panel (used for details, metadata)
+        ==================================================================== */
+        .lfc-info-card {
+            background-color: #F5F9EF;
+            border: 1px solid #D7E4C9;
+            border-radius: 10px;
+        }
+        .lfc-info-card-inner {
+            padding: 20px 24px;
+        }
+        .lfc-info-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: #6B7D71;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+        }
+        .lfc-info-value {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1F2A22;
+        }
+
+        /* ====================================================================
+           SECURITY NOTICE — amber-toned alert component
+           (kept universal/semantic — intentionally not re-themed to sage,
+           so alerts stay instantly recognizable against the brand palette)
+        ==================================================================== */
+        .lfc-security-notice {
+            background-color: #FFFBEB;
+            border: 1px solid #FDE68A;
+            border-left: 3px solid #F59E0B;
+            border-radius: 8px;
+        }
+        .lfc-security-notice-inner {
+            padding: 16px 20px;
+        }
+        .lfc-security-notice-text {
+            font-size: 13px;
+            line-height: 20px;
+            color: #92400E;
+            margin: 0;
+        }
+        .lfc-security-notice-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: #92400E;
+            margin: 0 0 4px 0;
+        }
+
+        /* ====================================================================
+           DIVIDER
+        ==================================================================== */
+        .lfc-divider {
+            border-top: 1px solid #D7E4C9;
+            font-size: 0;
+            line-height: 0;
+        }
+
+        /* ====================================================================
+           CONTACT SECTION
+        ==================================================================== */
+        .lfc-contact-heading {
+            font-size: 13px;
+            font-weight: 700;
+            color: #1F2A22;
+            margin: 0 0 6px 0;
+        }
+        .lfc-contact-text {
+            font-size: 13px;
+            line-height: 20px;
+            color: #6B7D71;
+            margin: 0;
+        }
+        .lfc-contact-text a {
+            color: #4C6B49;
+            font-weight: 600;
+        }
+
+        /* ====================================================================
+           FOOTER — deep forest, premium SaaS style
+        ==================================================================== */
+        .lfc-footer {
+            background-color: #16221A;
+        }
+        .lfc-footer-inner {
+            padding: 32px 40px;
+        }
+        .lfc-footer-text {
+            font-size: 12px;
+            line-height: 19px;
+            color: #9CAFAA;
+            margin: 0 0 8px 0;
+        }
+        .lfc-footer-brand {
+            font-size: 13px;
+            font-weight: 700;
+            color: #EBF4DD;
+            margin: 0 0 4px 0;
+        }
+        .lfc-footer-link {
+            color: #A9BFA4;
+            font-size: 12px;
+            text-decoration: none;
+        }
+        .lfc-footer-divider {
+            color: #3B4B3D;
+            font-size: 12px;
+            padding: 0 8px;
+        }
+
+        /* ====================================================================
+           RESPONSIVE — mobile breakpoints
+        ==================================================================== */
+        @media only screen and (max-width: 620px) {
+            .lfc-container {
+                width: 100% !important;
+                max-width: 100% !important;
+            }
+            .lfc-card-inner {
+                padding: 28px 22px !important;
+            }
+            .lfc-header-inner {
+                padding: 28px 22px !important;
+            }
+            .lfc-footer-inner {
+                padding: 24px 22px !important;
+            }
+            .lfc-heading {
+                font-size: 19px !important;
+                line-height: 26px !important;
+            }
+            .lfc-btn {
+                display: block !important;
+                width: 100% !important;
+                box-sizing: border-box;
+                text-align: center;
+            }
+            .lfc-stack-col {
+                display: block !important;
+                width: 100% !important;
+                padding: 0 0 12px 0 !important;
+            }
+        }
+
+        /* Dark mode: keep brand colors stable, avoid inverted-text artifacts */
+        @media (prefers-color-scheme: dark) {
+            .lfc-body-bg { background-color: #EBF4DD !important; }
+            .lfc-card { background-color: #FFFFFF !important; }
+        }
+    </style>
+
+    {% block extra_style %}{% endblock %}
+</head>
+<body class="lfc-body-bg" style="margin:0; padding:0; background-color:#EBF4DD;">
+
+    <!-- ============ PREHEADER (hidden preview text) ============ -->
+    <div style="display:none; font-size:1px; line-height:1px; max-height:0; max-width:0; opacity:0; overflow:hidden; mso-hide:all; font-family:sans-serif;">
+        {% block preheader %}{% endblock %}
+        &nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;
+    </div>
+
+    <!-- ============ OUTER WRAPPER TABLE (full-width, mint background) ============ -->
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#EBF4DD;">
+        <tr>
+            <td align="center" style="padding: 32px 16px;">
+
+                <!--[if mso]>
+                <table role="presentation" align="center" width="600" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                <td>
+                <![endif]-->
+
+                <!-- ============ MAIN CONTAINER (600px max width) ============ -->
+                <table role="presentation" class="lfc-container" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px; max-width:600px; margin:0 auto;">
+
+                    <!-- ============ HEADER: Deep Forest -> Sage gradient ============ -->
+                    <tr>
+                        <td class="lfc-header" style="background-color:#4C6B49; border-radius:12px 12px 0 0;">
+                            <!--[if mso]>
+                            <v:rect xmlns:v="urn:schemas-microsoft-com:vml" fill="true" stroke="false" style="width:600px;">
+                            <v:fill type="gradient" color="#16221A" color2="#90AB8B" angle="135" />
+                            <v:textbox inset="0,0,0,0">
+                            <![endif]-->
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                                <tr>
+                                    <td class="lfc-header-inner" style="padding: 32px 40px;">
+                                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                                            <tr>
+                                                <td align="left" valign="middle" width="44">
+                                                    <!--
+                                                        Logo: {{ logo_url }} must be an absolute, publicly
+                                                        reachable URL — most email clients block remote images
+                                                        by default and cannot resolve relative/static paths.
+                                                    -->
+                                                    {% block header_logo %}
+                                                    <img src="{{ logo_url }}"
+                                                        alt="{{ church_name|default:'LFC Church' }}"
+                                                        class="lfc-header-logo"
+                                                        width="44"
+                                                        style="display:block;
+                                                                width:44px;
+                                                                max-width:44px;
+                                                                height:auto;
+                                                                border-radius:8px;
+                                                                margin:0;">
+                                                    {% endblock %}
+                                                </td>
+                                                <td align="left" valign="middle" style="padding-left: 12px;">
+                                                    <span class="lfc-header-logo-text">{{ church_name|default:"LFC Church" }}</span><br>
+                                                    <span class="lfc-header-tagline">{{ system_name|default:"Church Management System" }}</span>
+                                                </td>
+                                            </tr>
+                                        </table>
+                                    </td>
+                                </tr>
+                            </table>
+                            <!--[if mso]>
+                            </v:textbox>
+                            </v:rect>
+                            <![endif]-->
+                        </td>
+                    </tr>
+
+                    <!-- ============ WHITE ROUNDED CONTENT CARD ============ -->
+                    <tr>
+                        <td>
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="lfc-card" style="background-color:#FFFFFF; border:1px solid #D7E4C9; border-top:none;">
+                                <tr>
+                                    <td class="lfc-card-inner" style="padding: 40px 40px;">
+
+                                        {% block content %}
+                                        <!-- Child templates override this block with their specific message body -->
+                                        {% endblock %}
+
+                                    </td>
+                                </tr>
+
+                                <!-- ============ OPTIONAL SECURITY NOTICE SLOT ============ -->
+                                {% block security_notice %}{% endblock %}
+
+                                <!-- ============ CONTACT SECTION ============ -->
+                                <tr>
+                                    <td style="padding: 0 40px;">
+                                        <div class="lfc-divider">&nbsp;</div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 24px 40px 32px 40px;">
+                                        {% block contact_section %}
+                                        <p class="lfc-contact-heading">Need help?</p>
+                                        <p class="lfc-contact-text">
+                                            Contact our parish office at
+                                            <a href="mailto:{{ support_email|default:'support@lfcchurch.org' }}">
+                                                {{ support_email|default:"support@lfcchurch.org" }}
+                                            </a>
+                                            or call <strong>{{ support_phone|default:"+91 000 000 0000" }}</strong>.
+                                        </p>
+                                        {% endblock %}
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                    <!-- ============ SPACER ============ -->
+                    <tr>
+                        <td style="height: 24px; line-height: 24px; font-size: 0;">&nbsp;</td>
+                    </tr>
+
+                    <!-- ============ PREMIUM DEEP-FOREST FOOTER ============ -->
+                    <tr>
+                        <td class="lfc-footer" style="background-color:#16221A; border-radius:12px;">
+                            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                                <tr>
+                                    <td class="lfc-footer-inner" align="center" style="padding: 32px 40px;">
+                                        {% block footer %}
+                                        <p class="lfc-footer-brand">{{ church_name|default:"LFC Church" }}</p>
+                                        <p class="lfc-footer-text">
+                                            {{ church_address|default:"123 Church Street, Kochi, Kerala, India" }}
+                                        </p>
+                                        <p class="lfc-footer-text" style="margin-top: 16px;">
+                                            <a href="{{ footer_link_privacy_url|default:'#' }}" class="lfc-footer-link">Privacy Policy</a>
+                                            <span class="lfc-footer-divider">|</span>
+                                            <a href="{{ footer_link_terms_url|default:'#' }}" class="lfc-footer-link">Terms of Service</a>
+                                            <span class="lfc-footer-divider">|</span>
+                                            <a href="{{ footer_link_unsubscribe_url|default:'#' }}" class="lfc-footer-link">Unsubscribe</a>
+                                        </p>
+                                        <p class="lfc-footer-text" style="margin-top: 16px; color:#6B7D71;">
+                                            &copy; {{ current_year }} {{ church_name|default:"LFC Church" }}. All rights reserved.
+                                        </p>
+                                        {% endblock %}
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+
+                </table>
+                <!-- ============ END MAIN CONTAINER ============ -->
+
+                <!--[if mso]>
+                </td>
+                </tr>
+                </table>
+                <![endif]-->
+
+            </td>
+        </tr>
+    </table>
+    <!-- ============ END OUTER WRAPPER ============ -->
+
+</body>
+</html>

@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% load static %}
+<!--
+    ============================================================================
+    LFC CHURCH MANAGEMENT SYSTEM — STAFF INVITATION EMAIL
+    ============================================================================
+    File: templates/emails/invitation_email.html
+    Sent when: An admin/superadmin invites a new staff member to join lfc-admin.
+
+    EXPECTED CONTEXT VARIABLES (pass these from your Django view/task):
+    ----------------------------------------------------------------------------
+    invitee_name          # Staff full name
+    inviter_name          # Superadmin/Staff who sent invitation
+
+    church_name           # LFC Church
+
+    role_display          # Display role
+
+    accept_invitation_url # Absolute frontend invitation URL
+
+    expires_at            # Expiry date/time
+
+    support_email         # From settings
+
+    support_phone         # Church phone
+
+    current_year          # timezone.now().year
+    ============================================================================
+-->
+
+{% block title %}You're Invited — {{ church_name|default:"LFC Church" }}{% endblock %}
+
+{% block preheader %}
+    {{ inviter_name|default:"A parish administrator" }} has invited you to join {{ church_name|default:"LFC Church" }} as a {{ role_display|default:"Staff Member" }}.
+{% endblock %}
+
+{% block header_tagline %}Staff Invitation{% endblock %}
+
+{% block content %}
+    <!-- ============ HEADING ============ -->
+    <h1 class="lfc-heading">You're invited to join {{ church_name|default:"our church" }}</h1>
+
+    <!-- ============ BODY COPY ============ -->
+    <p class="lfc-body-text">
+        Hi {{ invitee_name|default:"there" }},
+    </p>
+    <p class="lfc-body-text">
+        <strong>{{ inviter_name|default:"A parish administrator" }}</strong> has invited you to join the
+        <strong>{{ church_name|default:"LFC Church" }}</strong> admin team on the
+        LFC Church Management System as a <strong>{{ role_display|default:"Staff Member" }}</strong>.
+    </p>
+    <p class="lfc-body-text">
+        Click the button below to set up your password, activate your account, and join the church administration portal.
+    </p>
+
+    <!-- ============ CTA BUTTON (email-safe table-based button) ============ -->
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin: 8px 0 28px 0;">
+        <tr>
+            <td class="lfc-btn-wrap" style="border-radius:8px;" align="center">
+                <a href="{{ accept_invitation_url }}" class="lfc-btn" target="_blank" rel="noopener"
+                   style="font-size:15px; font-weight:600; color:#FFFFFF; text-decoration:none; padding:13px 32px; border-radius:8px; display:inline-block; background-color:#2563EB; border:1px solid #1D4ED8;">
+                    Accept Invitation
+                </a>
+            </td>
+        </tr>
+    </table>
+
+    <!-- ============ REUSABLE INFO CARD: Invitation details ============ -->
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="lfc-info-card" style="background-color:#F8FAFC; border:1px solid #E2E8F0; border-radius:10px; margin-bottom: 24px;">
+        <tr>
+            <td class="lfc-info-card-inner" style="padding: 20px 24px;">
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                    <tr>
+                        <td style="padding-bottom: 12px;">
+                            <span class="lfc-info-label">Church</span><br>
+                            <span class="lfc-info-value">{{ church_name|default:"—" }}</span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding-bottom: 12px;">
+                            <span class="lfc-info-label">Assigned Role</span><br>
+                            <span class="lfc-info-value">{{ role_display|default:"—" }}</span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <span class="lfc-info-label">Invitation Expires</span><br>
+                            <span class="lfc-info-value">{{ expires_at|default:"—" }}</span>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+
+    <p class="lfc-body-text" style="font-size: 13px; color: #94A3B8; margin-bottom: 0;">
+        If the button above doesn't work, copy and paste the secure invitation link below into your browser:<br>
+        <a href="{{ accept_invitation_url }}" style="color:#2563EB; word-break: break-all;">{{ accept_invitation_url }}</a>
+    </p>
+{% endblock %}
+
+{% block security_notice %}
+    <tr>
+        <td style="padding: 0 40px 8px 40px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="lfc-security-notice" style="background-color:#FFFBEB; border:1px solid #FDE68A; border-left:3px solid #F59E0B; border-radius:8px;">
+                <tr>
+                    <td class="lfc-security-notice-inner" style="padding: 16px 20px;">
+                        <p class="lfc-security-notice-title">Security notice</p>
+                        <p class="lfc-security-notice-text">
+                            This secure invitation link expires on {{ expires_at|default:"the date above" }} and can only be used once. If you were not expecting this invitation, you can safely ignore this email. No account will be created until the invitation is accepted and a password is set.
+                        </p>
+                    </td>
+                </tr>
+            </table>
+        </td>
+    </tr>
+{% endblock %}
