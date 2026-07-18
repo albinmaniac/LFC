@@ -99,7 +99,11 @@ class FamilyListCreateAPIView(generics.ListCreateAPIView):
         user = self.request.user
         is_admin_view = (
             self.request.method == "GET"
-            and has_permission(user, UserPermission.PermissionChoices.MANAGE_FAMILIES)
+            and user.is_authenticated
+            and (
+                user.is_superuser
+                or has_permission(user, UserPermission.PermissionChoices.MANAGE_FAMILIES)
+            )
         )
 
         if self.request.method == "GET" and not is_admin_view:
@@ -134,7 +138,11 @@ class FamilyRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
         user = self.request.user
         is_admin_view = (
             self.request.method == "GET"
-            and has_permission(user, UserPermission.PermissionChoices.MANAGE_FAMILIES)
+            and user.is_authenticated
+            and (
+                user.is_superuser
+                or has_permission(user, UserPermission.PermissionChoices.MANAGE_FAMILIES)
+            )
         )
 
         if self.request.method == "GET" and not is_admin_view:
@@ -160,7 +168,11 @@ class FamilyMemberListCreateAPIView(generics.ListCreateAPIView):
         user = self.request.user
         is_admin_view = (
             self.request.method == "GET"
-            and has_permission(user, UserPermission.PermissionChoices.MANAGE_FAMILY_MEMBERS)
+            and user.is_authenticated
+            and (
+                user.is_superuser
+                or has_permission(user, UserPermission.PermissionChoices.MANAGE_FAMILY_MEMBERS)
+            )
         )
 
         if self.request.method == "GET" and not is_admin_view:
@@ -195,7 +207,11 @@ class FamilyMemberRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPI
         user = self.request.user
         is_admin_view = (
             self.request.method == "GET"
-            and has_permission(user, UserPermission.PermissionChoices.MANAGE_FAMILY_MEMBERS)
+            and user.is_authenticated
+            and (
+                user.is_superuser
+                or has_permission(user, UserPermission.PermissionChoices.MANAGE_FAMILY_MEMBERS)
+            )
         )
 
         if self.request.method == "GET" and not is_admin_view:
