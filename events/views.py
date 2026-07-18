@@ -8,7 +8,9 @@ from lfc_project.pagination import StandardPagination
 from accounts.permissions import (
     CanManageEvents,
     IsSuperAdmin,
+    has_permission,
 )
+from parish.models import UserPermission
 
 from .models import Event
 from .serializers import EventSerializer
@@ -53,15 +55,25 @@ class EventListCreateAPIView(
         ]
 
     def get_queryset(self):
-
         queryset = Event.objects.select_related(
             "family_unit"
         )
 
-        if self.request.method == "GET":
+        user = self.request.user
+        is_admin_view = (
+            self.request.method == "GET"
+            and user.is_authenticated
+            and (
+                user.is_superuser
+                or has_permission(user, UserPermission.PermissionChoices.MANAGE_EVENTS)
+            )
+        )
+
+        if self.request.method == "GET" and not is_admin_view:
             queryset = queryset.filter(
                 is_active=True,
                 is_public=True,
+                end_datetime__gte=timezone.now(),
             )
 
         event_type = self.request.query_params.get(
@@ -100,6 +112,13 @@ class EventListCreateAPIView(
                 start_datetime__gte=timezone.now(),
             )
 
+        # Admin active filter
+        active = self.request.query_params.get("active")
+        if is_admin_view and active == "true":
+            queryset = queryset.filter(is_active=True)
+        elif is_admin_view and active == "false":
+            queryset = queryset.filter(is_active=False)
+
         return queryset
 
 
@@ -126,15 +145,25 @@ class EventRetrieveUpdateDestroyAPIView(
         ]
 
     def get_queryset(self):
-
         queryset = Event.objects.select_related(
             "family_unit"
         )
 
-        if self.request.method == "GET":
+        user = self.request.user
+        is_admin_view = (
+            self.request.method == "GET"
+            and user.is_authenticated
+            and (
+                user.is_superuser
+                or has_permission(user, UserPermission.PermissionChoices.MANAGE_EVENTS)
+            )
+        )
+
+        if self.request.method == "GET" and not is_admin_view:
             return queryset.filter(
                 is_active=True,
                 is_public=True,
+                end_datetime__gte=timezone.now(),
             )
 
         return queryset
