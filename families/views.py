@@ -100,9 +100,9 @@ class FamilyListCreateAPIView(generics.ListCreateAPIView):
         is_admin_view = (
             self.request.method == "GET"
             and user.is_authenticated
-            and (
-                user.is_superuser
-                or has_permission(user, UserPermission.PermissionChoices.MANAGE_FAMILIES)
+            and has_permission(
+                user,
+                UserPermission.PermissionChoices.MANAGE_FAMILIES,
             )
         )
 
@@ -139,9 +139,9 @@ class FamilyRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
         is_admin_view = (
             self.request.method == "GET"
             and user.is_authenticated
-            and (
-                user.is_superuser
-                or has_permission(user, UserPermission.PermissionChoices.MANAGE_FAMILIES)
+            and has_permission(
+                user,
+                UserPermission.PermissionChoices.MANAGE_FAMILIES,
             )
         )
 
@@ -169,9 +169,9 @@ class FamilyMemberListCreateAPIView(generics.ListCreateAPIView):
         is_admin_view = (
             self.request.method == "GET"
             and user.is_authenticated
-            and (
-                user.is_superuser
-                or has_permission(user, UserPermission.PermissionChoices.MANAGE_FAMILY_MEMBERS)
+            and has_permission(
+                user,
+                UserPermission.PermissionChoices.MANAGE_FAMILY_MEMBERS,
             )
         )
 
@@ -208,9 +208,9 @@ class FamilyMemberRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPI
         is_admin_view = (
             self.request.method == "GET"
             and user.is_authenticated
-            and (
-                user.is_superuser
-                or has_permission(user, UserPermission.PermissionChoices.MANAGE_FAMILY_MEMBERS)
+            and has_permission(
+                user,
+                UserPermission.PermissionChoices.MANAGE_FAMILY_MEMBERS,
             )
         )
 

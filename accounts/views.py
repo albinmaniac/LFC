@@ -86,8 +86,24 @@ class CurrentUserAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        user_data = UserSerializer(request.user).data
+
+        if _is_super_admin(request.user):
+            permissions = [
+                choice[0]
+                for choice in UserPermission.PermissionChoices.choices
+            ]
+        else:
+            permissions = list(
+                UserPermission.objects.filter(user=request.user)
+                .values_list("permission", flat=True)
+            )
+
         return Response(
-            UserSerializer(request.user).data,
+            {
+                "user": user_data,
+                "permissions": permissions,
+            },
             status=status.HTTP_200_OK,
         )
 
