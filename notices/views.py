@@ -8,92 +8,49 @@ from lfc_project.pagination import StandardPagination
 from accounts.permissions import (
     CanManageNotices,
     IsSuperAdmin,
+    has_permission,
 )
 
 from .models import Notice
 from .serializers import NoticeSerializer
+from parish.models import UserPermission
 
-
-class NoticeListCreateAPIView(
-    generics.ListCreateAPIView
-):
-
-    serializer_class = NoticeSerializer
+class NoticeListCreateAPIView(generics.ListCreateAPIView):
+    # ...existing serializer_class, pagination_class, filter_backends, search_fields...
     pagination_class = StandardPagination
-    filter_backends = [
-        SearchFilter,
-        OrderingFilter,
-    ]
-
-    search_fields = [
-        "title",
-        "content",
-    ]
-
-    ordering_fields = [
-        "publish_date",
-        "created_at",
-        "title",
-    ]
-
-    ordering = [
-        "-publish_date",
-    ]
+    serializer_class = NoticeSerializer
+    filter_backends = [SearchFilter, OrderingFilter]
+    search_fields = ["title", "content"]
 
     def get_permissions(self):
-
         if self.request.method == "GET":
             return [AllowAny()]
-
-        return [
-            IsAuthenticated(),
-            CanManageNotices(),
-        ]
+        return [IsAuthenticated(), CanManageNotices()]
 
     def get_queryset(self):
+        queryset = Notice.objects.all()  # adjust to match your actual base queryset
 
-        queryset = Notice.objects.all()
-
-        if self.request.method == "GET":
-            queryset = queryset.filter(
-                is_active=True,
-                is_public=True,
-            )
-
-            queryset = queryset.exclude(
-                expiry_date__isnull=False,
-                expiry_date__lt=timezone.now(),
-            )
-
-        notice_type = self.request.query_params.get(
-            "notice_type"
+        user = self.request.user
+        is_admin_view = (
+            self.request.method == "GET"
+            and user.is_authenticated
+            and has_permission(user, UserPermission.PermissionChoices.MANAGE_NOTICES)
         )
 
-        featured = self.request.query_params.get(
-            "featured"
-        )
+        if self.request.method == "GET" and not is_admin_view:
+            queryset = queryset.filter(is_active=True, is_public=True)
 
-        active = self.request.query_params.get(
-            "active"
-        )
+        notice_type = self.request.query_params.get("notice_type")
+        active = self.request.query_params.get("active")
 
         if notice_type:
-            queryset = queryset.filter(
-                notice_type=notice_type,
-            )
-
-        if featured == "true":
-            queryset = queryset.filter(
-                is_featured=True,
-            )
-
-        if active == "true":
-            queryset = queryset.filter(
-                is_active=True,
-            )
+            queryset = queryset.filter(notice_type=notice_type)
+        if is_admin_view and active == "true":
+            queryset = queryset.filter(is_active=True)
+        elif is_admin_view and active == "false":
+            queryset = queryset.filter(is_active=False)
 
         return queryset
-
 
 class NoticeRetrieveUpdateDestroyAPIView(
     generics.RetrieveUpdateDestroyAPIView
