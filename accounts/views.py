@@ -39,6 +39,8 @@ from accounts.throttles import (
     InvitationRateThrottle,
     RefreshTokenRateThrottle,
 )
+import logging
+logger = logging.getLogger(__name__)
 # Returns active users for admin password reset dropdown
 
 class CustomTokenRefreshView(TokenRefreshView):
@@ -160,13 +162,16 @@ class ChangePasswordAPIView(APIView):
             "http://localhost:5173",
         )
 
-        SecurityEmailService.send_password_changed_email(
-            user=request.user,
-            changed_at=timezone.now(),
-            changed_ip=request.META.get("REMOTE_ADDR"),
-            changed_device=request.META.get("HTTP_USER_AGENT", ""),
-            login_url=f"{frontend_url}/login",
-        )
+        try:
+            SecurityEmailService.send_password_changed_email(
+                user=request.user,
+                changed_at=timezone.now(),
+                changed_ip=request.META.get("REMOTE_ADDR"),
+                changed_device=request.META.get("HTTP_USER_AGENT", ""),
+                login_url=f"{frontend_url}/login",
+            )
+        except Exception:
+            logger.exception("Failed to send password-changed email to %s", request.user.email)
 
         UserSession.objects.filter(
             user=request.user,
@@ -190,8 +195,6 @@ class ChangePasswordAPIView(APIView):
             {"message": "Password changed successfully."},
             status=status.HTTP_200_OK,
         )
-
-
 #
 # Admin-triggered password reset view
 
@@ -234,6 +237,10 @@ class SendPasswordResetAPIView(APIView):
         )
         reset_link = f"{frontend_url}/reset-password/{reset.token}"
 
+        # Left as a hard failure (unlike the other views) on purpose: a
+        # PasswordResetToken that exists but was never emailed is a dead,
+        # unusable token, and transaction.atomic + set_rollback keeps the DB
+        # clean in that case. This one SHOULD roll back if the email fails.
         try:
             PasswordResetService.send_reset_email(
                 user=user,
@@ -249,6 +256,7 @@ class SendPasswordResetAPIView(APIView):
                 status=status.HTTP_200_OK,
             )
         except Exception as exc:
+            logger.exception("Failed to send password reset email to %s", user.email)
             transaction.set_rollback(True)
             return Response(
                 {
@@ -358,11 +366,32 @@ class InvitationCreateAPIView(APIView):
         serializer = InvitationCreateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
-        invitation = InvitationService.create_invitation(
-            email=serializer.validated_data["email"],
-            role=serializer.validated_data["role"],
-            invited_by=request.user,
-        )
+        # create_invitation() creates the Invitation row THEN sends the
+        # email internally (see InvitationService in email_service.py). If
+        # the email call raises, the invitation already exists in the DB —
+        # which is fine, that's what "Resend Invitation" is for. We just
+        # don't want a slow/broken Brevo call to turn a successful
+        # invitation into a 500 for the admin.
+        try:
+            invitation = InvitationService.create_invitation(
+                email=serializer.validated_data["email"],
+                role=serializer.validated_data["role"],
+                invited_by=request.user,
+            )
+        except Exception:
+            logger.exception(
+                "Invitation created but email failed to send for %s",
+                serializer.validated_data["email"],
+            )
+            invitation = Invitation.objects.filter(
+                email__iexact=serializer.validated_data["email"],
+                status=Invitation.Status.PENDING,
+            ).order_by("-created_at").first()
+            if invitation is None:
+                return Response(
+                    {"message": "Failed to create invitation.", "detail": "Email delivery failed and no invitation record could be found."},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                )
 
         return Response(
             {
@@ -373,8 +402,7 @@ class InvitationCreateAPIView(APIView):
             },
             status=status.HTTP_201_CREATED,
         )
-
-
+    
 # Accept invitation API view
 class AcceptInvitationAPIView(APIView):
     """Accept an invitation and activate a user account."""
@@ -451,10 +479,17 @@ class AcceptInvitationAPIView(APIView):
             "http://localhost:5173",
         )
 
-        AccountEmailService.send_welcome_email(
-            user=user,
-            login_url=f"{frontend_url}/login",
-        )
+        # Critical: the account is ALREADY active and the password is
+        # ALREADY set by this point. A failed welcome email must never
+        # block the user from being told their account worked and from
+        # being able to log in.
+        try:
+            AccountEmailService.send_welcome_email(
+                user=user,
+                login_url=f"{frontend_url}/login",
+            )
+        except Exception:
+            logger.exception("Failed to send welcome email to %s", user.email)
 
         return Response(
             {
@@ -462,8 +497,7 @@ class AcceptInvitationAPIView(APIView):
             },
             status=status.HTTP_200_OK,
         )
-
-
+    
 class CancelInvitationAPIView(APIView):
     """Cancel a pending invitation (admin only)."""
     permission_classes = [
@@ -510,10 +544,13 @@ class CancelInvitationAPIView(APIView):
         invitation.status = Invitation.Status.CANCELLED
         invitation.save(update_fields=["status"])
 
-        InvitationService.send_invitation_cancelled_email(
-            invitation=invitation,
-            cancelled_by=request.user,
-        )
+        try:
+            InvitationService.send_invitation_cancelled_email(
+                invitation=invitation,
+                cancelled_by=request.user,
+            )
+        except Exception:
+            logger.exception("Failed to send cancellation email for invitation %s", invitation.email)
 
         return Response(
             {
@@ -523,8 +560,7 @@ class CancelInvitationAPIView(APIView):
             },
             status=status.HTTP_200_OK,
         )
-
-
+    
 class ResendInvitationAPIView(APIView):
     """Resend an invitation email (admin only)."""
     throttle_classes = [InvitationRateThrottle]
@@ -556,7 +592,21 @@ class ResendInvitationAPIView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        InvitationService.resend_invitation(invitation)
+        # Unlike Create/Cancel, "Resend" whose entire PURPOSE is sending an
+        # email should surface a real failure to the admin rather than
+        # silently succeeding — a resend that didn't send anything is
+        # actively misleading. Keep this one as a hard failure.
+        try:
+            InvitationService.resend_invitation(invitation)
+        except Exception as exc:
+            logger.exception("Failed to resend invitation to %s", invitation.email)
+            return Response(
+                {
+                    "message": "Failed to resend invitation.",
+                    "detail": str(exc),
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
         return Response(
             {
@@ -566,7 +616,7 @@ class ResendInvitationAPIView(APIView):
             },
             status=status.HTTP_200_OK,
         )
-
+    
 class InvitationDestroyAPIView(generics.DestroyAPIView):
     """Delete an invitation if it is not pending or accepted (admin only)."""
     queryset = Invitation.objects.all()
@@ -864,34 +914,24 @@ class ForceLogoutAPIView(APIView):
             )
 
         session.is_active = False
-        session.save(
-            update_fields=["is_active"]
-        )
+        session.save(update_fields=["is_active"])
 
         LoginHistory.objects.filter(
             session=session,
             logout_time__isnull=True,
-        ).update(
-            logout_time=timezone.now()
-        )
+        ).update(logout_time=timezone.now())
 
-        frontend_url = getattr(
-            settings,
-            "ADMIN_FRONTEND_URL",
-            "http://localhost:5173",
-        )
+        frontend_url = getattr(settings, "ADMIN_FRONTEND_URL", "http://localhost:5173")
 
-        SecurityEmailService.send_force_logout_email(
-            user=session.user,
-            logged_out_at=timezone.now(),
-            triggered_by=request.user.get_full_name() or request.user.username,
-            reason="Your session was terminated by the administrator.",
-            login_url=f"{frontend_url}/login",
-        )
+        try:
+            SecurityEmailService.send_force_logout_email(
+                user=session.user,
+                logged_out_at=timezone.now(),
+                triggered_by=request.user.get_full_name() or request.user.username,
+                reason="Your session was terminated by the administrator.",
+                login_url=f"{frontend_url}/login",
+            )
+        except Exception:
+            logger.exception("Failed to send force-logout email to %s", session.user.email)
 
-        return Response(
-            {
-                "message": "Session terminated successfully."
-            },
-            status=status.HTTP_200_OK,
-        )
+        return Response({"message": "Session terminated successfully."}, status=status.HTTP_200_OK)
