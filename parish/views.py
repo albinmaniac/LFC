@@ -12,7 +12,7 @@ from django.shortcuts import get_object_or_404
 from accounts.permissions import (
     IsSuperAdmin,
     CanViewDashboard,
-    CanManageSettings,
+    CanManageParish,
 )
 from staffs.models import Staff
 from families.models import (
@@ -165,12 +165,14 @@ class MassTimingListCreateAPIView(ListCreateAPIView):
     def get_permissions(self):
         if self.request.method == "GET":
             return [AllowAny()]
-        return [IsAuthenticated(), CanManageSettings()]
+        return [IsAuthenticated(), CanManageParish()]
 
     def get_queryset(self):
         queryset = MassTiming.objects.select_related("parish")
 
-        if self.request.method == "GET":
+        is_admin_view = self.request.user and self.request.user.is_authenticated
+
+        if not is_admin_view:
             queryset = queryset.filter(is_active=True)
 
         return queryset.order_by("day", "mass_time")
@@ -191,11 +193,20 @@ class MassTimingListCreateAPIView(ListCreateAPIView):
 class MassTimingRetrieveUpdateDestroyAPIView(RetrieveUpdateDestroyAPIView):
 
     serializer_class = MassTimingSerializer
-    queryset = MassTiming.objects.select_related("parish")
     permission_classes = [
         IsAuthenticated,
-        CanManageSettings,
+        CanManageParish,
     ]
+
+    def get_queryset(self):
+        queryset = MassTiming.objects.select_related("parish")
+
+        is_admin_view = self.request.user and self.request.user.is_authenticated
+
+        if not is_admin_view:
+            queryset = queryset.filter(is_active=True)
+
+        return queryset
 
     def perform_destroy(self, instance):
         instance.delete()
