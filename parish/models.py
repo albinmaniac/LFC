@@ -131,8 +131,8 @@ class Parish(models.Model):
     
 
     def save(self, *args, **kwargs):
-        self.full_clean()
         super().save(*args, **kwargs)
+
 
     def __str__(self):
         return self.name
@@ -304,16 +304,9 @@ class UserPermission(models.Model):
                 "SuperAdmin does not require permission records."
             )
 
-    def save(
-        self,
-        *args,
-        **kwargs,
-    ):
-        self.full_clean()
-        super().save(
-            *args,
-            **kwargs,
-        )
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+
 
     def __str__(self):
 
