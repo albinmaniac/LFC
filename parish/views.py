@@ -175,6 +175,10 @@ class MassTimingListCreateAPIView(ListCreateAPIView):
         if not is_admin_view:
             queryset = queryset.filter(is_active=True)
 
+        day = self.request.query_params.get("day")
+        if day:
+            queryset = queryset.filter(day=day)
+
         return queryset.order_by("day", "mass_time")
 
     def perform_create(self, serializer):
