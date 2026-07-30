@@ -20,6 +20,7 @@ from accounts.serializers import (
     ChangePasswordSerializer,
     ResetPasswordSerializer,
 )
+from rest_framework import exceptions
 from accounts.email_service import InvitationService, PasswordResetService,SecurityEmailService,AccountEmailService
 from lfc_project.pagination import StandardPagination
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -662,15 +663,14 @@ class LoginAPIView(APIView):
     @transaction.atomic
     def post(self, request):
         serializer = LoginSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+
+        if not serializer.is_valid():
+            self._log_failed_attempt(request)
+            raise exceptions.ValidationError(serializer.errors)
 
         user = serializer.validated_data["user"]
         ip_address = request.META.get("REMOTE_ADDR")
-
-        user_agent = request.META.get(
-            "HTTP_USER_AGENT",
-            "",
-        )
+        user_agent = request.META.get("HTTP_USER_AGENT", "")
 
         session = UserSession.objects.create(
             user=user,
@@ -687,35 +687,20 @@ class LoginAPIView(APIView):
         )
 
         refresh = RefreshToken.for_user(user)
-
-        refresh["session_id"] = str(
-            session.session_id
-        )
-
-        refresh["token_version"] = (
-            session.token_version
-        )
+        refresh["session_id"] = str(session.session_id)
+        refresh["token_version"] = session.token_version
 
         access_token = refresh.access_token
+        access_token["session_id"] = str(session.session_id)
+        access_token["token_version"] = session.token_version
 
-        access_token["session_id"] = str(
-            session.session_id
-        )
-
-        access_token["token_version"] = (
-            session.token_version
-        )
         user_data = LoginUserSerializer(user).data
 
         if _is_super_admin(user):
-            permissions = [
-                choice[0]
-                for choice in UserPermission.PermissionChoices.choices
-            ]
+            permissions = [choice[0] for choice in UserPermission.PermissionChoices.choices]
         else:
             permissions = list(
-                UserPermission.objects.filter(user=user)
-                .values_list("permission", flat=True)
+                UserPermission.objects.filter(user=user).values_list("permission", flat=True)
             )
 
         return Response(
@@ -726,6 +711,26 @@ class LoginAPIView(APIView):
                 "permissions": permissions,
             },
             status=status.HTTP_200_OK,
+        )
+
+    def _log_failed_attempt(self, request):
+        email = request.data.get("email")
+        if not email:
+            return
+
+        user = User.objects.filter(email__iexact=email).first()
+        if not user:
+            # No matching account — nothing to attach the row to. Logging
+            # unknown-email attempts would need a nullable `user` FK on
+            # LoginHistory, which isn't the current schema.
+            return
+
+        LoginHistory.objects.create(
+            user=user,
+            session=None,
+            ip_address=request.META.get("REMOTE_ADDR"),
+            user_agent=request.META.get("HTTP_USER_AGENT", ""),
+            is_successful=False,
         )
 
 
@@ -935,3 +940,5 @@ class ForceLogoutAPIView(APIView):
             logger.exception("Failed to send force-logout email to %s", session.user.email)
 
         return Response({"message": "Session terminated successfully."}, status=status.HTTP_200_OK)
+
+        

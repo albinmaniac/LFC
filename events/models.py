@@ -140,5 +140,67 @@ class Event(models.Model):
 
     def __str__(self):
         return self.title
-    
+
+
+class Feast(models.Model):
+    title = models.CharField(
+        max_length=255,
+        db_index=True,
+    )
+
+    description = models.TextField()
+
+    feast_date = models.DateField(
+        db_index=True,
+    )
+
+    cover_image = models.ImageField(
+        upload_to="feasts/",
+        null=True,
+        blank=True,
+        validators=[validate_image],
+    )
+
+    is_public = models.BooleanField(
+        default=True,
+    )
+
+    is_featured = models.BooleanField(
+        default=False,
+    )
+
+    is_active = models.BooleanField(
+        default=True,
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True,
+    )
+
+    class Meta:
+        ordering = [
+            "feast_date",
+        ]
+        indexes = [
+            models.Index(fields=["feast_date"]),
+            models.Index(fields=["is_public"]),
+            models.Index(fields=["is_featured"]),
+            models.Index(fields=["is_active"]),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+
+            fields=["title", "feast_date"],
+
+            name="unique_feast_title_per_date",
+            )
+        ]
+
+    def __str__(self):
+        return self.title
+
     

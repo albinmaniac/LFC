@@ -1,7 +1,7 @@
 from django.utils import timezone
 from rest_framework import serializers
 
-from .models import Event
+from .models import Event,Feast
 
 
 class EventSerializer(serializers.ModelSerializer):
@@ -188,3 +188,129 @@ class EventSerializer(serializers.ModelSerializer):
             return obj.cover_image.url
 
         return None
+
+class FeastSerializer(serializers.ModelSerializer):
+
+    cover_image_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Feast
+
+        fields = (
+            "id",
+            "title",
+            "description",
+            "feast_date",
+            "cover_image",
+            "cover_image_url",
+            "is_public",
+            "is_featured",
+            "is_active",
+            "created_at",
+            "updated_at",
+        )
+
+        read_only_fields = (
+            "id",
+            "created_at",
+            "updated_at",
+        )
+
+    def get_cover_image_url(self, obj):
+
+        request = self.context.get("request")
+
+        if obj.cover_image:
+            if request:
+                return request.build_absolute_uri(
+                    obj.cover_image.url
+                )
+            return obj.cover_image.url
+
+        return None
+
+    def validate_title(self, value):
+
+        value = value.strip()
+
+        if not value:
+            raise serializers.ValidationError(
+                "Title cannot be empty."
+            )
+
+        return value
+
+    def validate_description(self, value):
+
+        value = value.strip()
+
+        if not value:
+            raise serializers.ValidationError(
+                "Description cannot be empty."
+            )
+
+        return value
+
+    def validate(self, attrs):
+
+        title = attrs.get(
+            "title",
+            getattr(self.instance, "title", None),
+        )
+
+        feast_date = attrs.get(
+            "feast_date",
+            getattr(self.instance, "feast_date", None),
+        )
+
+        queryset = Feast.objects.filter(
+            title__iexact=title.strip(),
+            feast_date=feast_date,
+        )
+
+        if self.instance:
+            queryset = queryset.exclude(pk=self.instance.pk)
+
+        if queryset.exists():
+            raise serializers.ValidationError(
+                {
+                    "title": (
+                        "A feast with this title already "
+                        "exists on the selected date."
+                    )
+                }
+            )
+
+        return attrs
+
+class CalendarItemSerializer(serializers.Serializer):
+
+    TYPE_CHOICES = (
+        ("event", "Event"),
+        ("feast", "Feast"),
+    )
+
+    type = serializers.ChoiceField(
+        choices=TYPE_CHOICES,
+        read_only=True,
+    )
+
+    id = serializers.IntegerField(
+        read_only=True,
+    )
+
+    title = serializers.CharField(
+        read_only=True,
+    )
+
+    date = serializers.DateField(
+        read_only=True,
+    )
+
+    is_featured = serializers.BooleanField(
+        read_only=True,
+    )
+
+    url = serializers.CharField(
+        read_only=True,
+    )

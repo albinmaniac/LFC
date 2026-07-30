@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.utils.html import format_html
 
-from .models import Event
+from .models import Event,Feast
 
 
 @admin.register(Event)
@@ -109,3 +109,90 @@ class EventAdmin(admin.ModelAdmin):
 
     cover_preview.short_description = "Cover Preview"
 
+@admin.register(Feast)
+class FeastAdmin(admin.ModelAdmin):
+
+    list_display = (
+        "title",
+        "feast_date",
+        "is_public",
+        "is_featured",
+        "is_active",
+    )
+
+    list_filter = (
+        "feast_date",
+        "is_public",
+        "is_featured",
+        "is_active",
+    )
+
+    search_fields = (
+        "title",
+        "description",
+    )
+
+    readonly_fields = (
+        "created_at",
+        "updated_at",
+        "cover_preview",
+    )
+
+    fieldsets = (
+        (
+            "Feast Information",
+            {
+                "fields": (
+                    "title",
+                    "description",
+                    "feast_date",
+                )
+            },
+        ),
+        (
+            "Media",
+            {
+                "fields": (
+                    "cover_image",
+                    "cover_preview",
+                )
+            },
+        ),
+        (
+            "Status",
+            {
+                "fields": (
+                    "is_public",
+                    "is_featured",
+                    "is_active",
+                )
+            },
+        ),
+        (
+            "Audit",
+            {
+                "fields": (
+                    "created_at",
+                    "updated_at",
+                )
+            },
+        ),
+    )
+
+    ordering = (
+        "-feast_date",
+    )
+
+    def cover_preview(self, obj):
+
+        if obj.cover_image:
+            return format_html(
+                '<img src="{}" width="250" />',
+                obj.cover_image.url,
+            )
+
+        return "No Image"
+
+    cover_preview.short_description = "Cover Preview"
+
+    

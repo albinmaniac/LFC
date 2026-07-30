@@ -3,6 +3,7 @@ from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 from django.utils import timezone
 from django.utils.html import strip_tags
+from django.db import transaction
 from datetime import timedelta
 from .models import Invitation
 
@@ -31,6 +32,9 @@ class EmailService:
         }
 
         base_context.update(context or {})
+
+        if not recipient_list or not any(recipient_list):
+            raise ValueError("Recipient list cannot be empty.")
 
         html_content = render_to_string(
             template_name,
@@ -67,7 +71,10 @@ class InvitationService:
             invited_by=invited_by,
         )
 
-        InvitationService.send_invitation_email(invitation)
+        from .tasks import send_invitation_email_task
+        transaction.on_commit(
+            lambda: send_invitation_email_task.delay(invitation.id)
+        )
 
         return invitation
 
@@ -84,17 +91,16 @@ class InvitationService:
             ]
         )
 
-        InvitationService.send_invitation_email(invitation)
+        from .tasks import send_invitation_email_task
+        transaction.on_commit(
+            lambda: send_invitation_email_task.delay(invitation.id)
+        )
 
         return invitation
 
     @staticmethod
     def send_invitation_email(invitation):
-        frontend_url = getattr(
-            settings,
-            "ADMIN_FRONTEND_URL",
-            "http://localhost:5173",
-        )
+        frontend_url = settings.ADMIN_FRONTEND_URL
 
         invitation_link = (
             f"{frontend_url}/setup-password/{invitation.token}"
@@ -227,4 +233,3 @@ class SecurityEmailService:
             recipient_list=[user.email],
         )
         
-                
