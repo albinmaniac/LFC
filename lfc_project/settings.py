@@ -301,10 +301,24 @@ CLOUDINARY_STORAGE = {
 # ===========================
 # Celery Configuration
 # ===========================
+import ssl
 
-CELERY_BROKER_URL = os.getenv("REDIS_URL")
+CELERY_BROKER_USE_SSL = {
+    "ssl_cert_reqs": ssl.CERT_NONE,
+}
 
-CELERY_RESULT_BACKEND = os.getenv("REDIS_URL")
+CELERY_REDIS_BACKEND_USE_SSL = {
+    "ssl_cert_reqs": ssl.CERT_NONE,
+}
+
+redis_url = os.getenv("REDIS_URL")
+
+if redis_url and redis_url.startswith("rediss://") and "ssl_cert_reqs=" not in redis_url:
+    separator = "&" if "?" in redis_url else "?"
+    redis_url = f"{redis_url}{separator}ssl_cert_reqs=CERT_NONE"
+
+CELERY_BROKER_URL = redis_url
+CELERY_RESULT_BACKEND = redis_url
 
 CELERY_ACCEPT_CONTENT = ["json"]
 
