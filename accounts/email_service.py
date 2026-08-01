@@ -5,6 +5,7 @@ from django.utils import timezone
 from django.utils.html import strip_tags
 from django.db import transaction
 from datetime import timedelta
+import requests
 from .models import Invitation
 
 
@@ -43,18 +44,41 @@ class EmailService:
 
         text_content = strip_tags(html_content)
 
-        email = EmailMultiAlternatives(
-            subject=subject,
-            body=text_content,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            to=recipient_list,
-        )
-        email.attach_alternative(
-            html_content,
-            "text/html",
-        )
+        provider = getattr(settings, "EMAIL_PROVIDER", "smtp").lower()
 
-        email.send(fail_silently=False)
+        if provider == "brevo":
+            response = requests.post(
+                "https://api.brevo.com/v3/smtp/email",
+                headers={
+                    "accept": "application/json",
+                    "api-key": settings.BREVO_API_KEY,
+                    "content-type": "application/json",
+                },
+                json={
+                    "sender": {
+                        "name": getattr(settings, "CHURCH_NAME", "LFC Church"),
+                        "email": settings.DEFAULT_FROM_EMAIL,
+                    },
+                    "to": [{"email": email} for email in recipient_list],
+                    "subject": subject,
+                    "htmlContent": html_content,
+                    "textContent": text_content,
+                },
+                timeout=30,
+            )
+            response.raise_for_status()
+        else:
+            email = EmailMultiAlternatives(
+                subject=subject,
+                body=text_content,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                to=recipient_list,
+            )
+            email.attach_alternative(
+                html_content,
+                "text/html",
+            )
+            email.send(fail_silently=False)
 
 class InvitationService:
 
@@ -232,4 +256,3 @@ class SecurityEmailService:
             },
             recipient_list=[user.email],
         )
-        
