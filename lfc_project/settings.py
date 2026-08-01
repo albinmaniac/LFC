@@ -220,6 +220,8 @@ EMAIL_HOST_USER = os.getenv("BREVO_SMTP_USER")
 EMAIL_HOST_PASSWORD = os.getenv("BREVO_SMTP_KEY")
 DEFAULT_FROM_EMAIL = os.getenv("ADMIN_EMAIL")
 SERVER_EMAIL = DEFAULT_FROM_EMAIL
+BREVO_API_KEY = os.getenv("BREVO_API_KEY")
+EMAIL_PROVIDER = os.getenv("EMAIL_PROVIDER", "smtp")
 
 from datetime import timedelta
 
