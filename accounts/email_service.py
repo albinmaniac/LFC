@@ -6,8 +6,12 @@ from django.utils.html import strip_tags
 from django.db import transaction
 from datetime import timedelta
 import requests
+import logging
 from .models import Invitation
 
+
+
+logger = logging.getLogger(__name__)
 
 class EmailService:
     """
@@ -45,8 +49,10 @@ class EmailService:
         text_content = strip_tags(html_content)
 
         provider = getattr(settings, "EMAIL_PROVIDER", "smtp").lower()
+        logger.info("EMAIL_PROVIDER = %s", provider)
 
         if provider == "brevo":
+            logger.info(">>> USING BREVO API <<<")
             response = requests.post(
                 "https://api.brevo.com/v3/smtp/email",
                 headers={
@@ -66,8 +72,11 @@ class EmailService:
                 },
                 timeout=30,
             )
+            logger.info("Brevo response status: %s", response.status_code)
+            logger.info("Brevo response body: %s", response.text)
             response.raise_for_status()
         else:
+            logger.info(">>> USING SMTP <<<")
             email = EmailMultiAlternatives(
                 subject=subject,
                 body=text_content,
