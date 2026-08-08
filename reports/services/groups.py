@@ -75,8 +75,7 @@ class GroupReportService:
         if search:
             queryset = queryset.filter(
                 Q(name__icontains=search) |
-                Q(leader__first_name__icontains=search) |
-                Q(leader__last_name__icontains=search)
+                Q(leader__full_name__icontains=search)
             )
         return queryset
 
@@ -100,4 +99,3 @@ class GroupReportService:
         if search:
             queryset = queryset.filter(name__icontains=search)
         return queryset
-    

@@ -168,7 +168,7 @@ class InvitationService:
             template_name="emails/invitation_cancelled_email.html",
             context={
                 "invitee_name": invitation.full_name or invitation.email,
-                "cancelled_by": cancelled_by.get_full_name(),
+                "cancelled_by": cancelled_by.full_name or cancelled_by.email,
                 "role_display": invitation.get_role_display(),
                 "cancelled_at": timezone.now(),
                 "header_image_url": getattr(settings, "EMAIL_INVITATION_CANCELLED_URL", ""),
@@ -190,7 +190,7 @@ class PasswordResetService:
             subject="Reset Your Password",
             template_name="emails/password_reset_email.html",
             context={
-                "user_name": user.get_full_name() or user.first_name or user.username,
+                "user_name": user.full_name or user.email,
                 "reset_password_url": reset_link,
                 "expires_in_minutes": 30,
                 "requested_at": timezone.now().strftime("%d %B %Y, %I:%M %p"),
@@ -208,7 +208,7 @@ class AccountEmailService:
             subject="Welcome to LFC Church",
             template_name="emails/welcome_email.html",
             context={
-                "user_name": user.get_full_name() or user.first_name or user.username,
+                "user_name": user.full_name or user.email,
                 "user_email": user.email,
                 "role_display": user.get_role_display() if hasattr(user, "get_role_display") else "",
                 "login_url": login_url,
@@ -233,7 +233,7 @@ class SecurityEmailService:
             subject="Your Password Was Changed",
             template_name="emails/password_changed_email.html",
             context={
-                "user_name": user.get_full_name() or user.first_name or user.username,
+                "user_name": user.full_name or user.email,
                 "user_email": user.email,
                 "changed_at": changed_at,
                 "changed_ip": changed_ip,
@@ -257,7 +257,7 @@ class SecurityEmailService:
             subject="You Have Been Logged Out",
             template_name="emails/force_logout_email.html",
             context={
-                "user_name": user.get_full_name() or user.first_name or user.username,
+                "user_name": user.full_name or user.email,
                 "user_email": user.email,
                 "logged_out_at": logged_out_at,
                 "triggered_by": triggered_by,

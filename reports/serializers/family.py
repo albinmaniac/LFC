@@ -85,14 +85,12 @@ class FamilyUnitReportSerializer(serializers.ModelSerializer):
     def get_president_name(self, obj):
         if not obj.president:
             return None
-
-        return f"{obj.president.first_name} {obj.president.last_name}".strip()
+        return obj.president.full_name or obj.president.email
 
     def get_secretary_name(self, obj):
         if not obj.secretary:
             return None
-
-        return f"{obj.secretary.first_name} {obj.secretary.last_name}".strip()
+        return obj.secretary.full_name or obj.secretary.email
 
 
 class FamilyHeadReportSerializer(serializers.ModelSerializer):

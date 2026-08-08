@@ -72,18 +72,12 @@ class FamilyUnitSerializer(serializers.ModelSerializer):
 
     def get_president_name(self, obj):
         if obj.president:
-            return (
-                f"{obj.president.first_name} "
-                f"{obj.president.last_name}"
-            ).strip()
+            return obj.president.full_name or obj.president.email
         return None
 
     def get_secretary_name(self, obj):
         if obj.secretary:
-            return (
-                f"{obj.secretary.first_name} "
-                f"{obj.secretary.last_name}"
-            ).strip()
+            return obj.secretary.full_name or obj.secretary.email
         return None
 
     def get_family_count(self, obj):

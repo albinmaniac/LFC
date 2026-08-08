@@ -355,19 +355,8 @@ class CalendarAPIView(APIView):
         month = request.query_params.get("month")
         year = request.query_params.get("year")
 
-        events = (
-            Event.objects
-            .select_related("family_unit")
-            .filter(
-                is_active=True,
-                is_public=True,
-            )
-        )
-
-        feasts = Feast.objects.filter(
-            is_active=True,
-            is_public=True,
-        )
+        events = Event.objects.select_related("family_unit")
+        feasts = Feast.objects.all()
 
         try:
             if month:

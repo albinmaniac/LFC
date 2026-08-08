@@ -40,8 +40,7 @@ class ParishGroupAdmin(
     search_fields = (
         "name",
         "patron_saint",
-        "leader__first_name",
-        "leader__last_name",
+        "leader__full_name",
     )
 
     autocomplete_fields = (

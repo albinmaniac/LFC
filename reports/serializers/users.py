@@ -28,7 +28,7 @@ class LoginHistoryReportSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
     def get_user_name(self, obj):
-        return f"{obj.user.first_name} {obj.user.last_name}".strip()
+        return obj.user.full_name or obj.user.email
 
 
 class InvitationReportSerializer(serializers.ModelSerializer):
@@ -53,8 +53,7 @@ class RecentUserReportSerializer(serializers.ModelSerializer):
         model = User
         fields = (
             "id",
-            "first_name",
-            "last_name",
+            "full_name",
             "email",
             "role",
             "phone_number",
@@ -82,7 +81,7 @@ class ActiveSessionReportSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
     def get_user_name(self, obj):
-        return f"{obj.user.first_name} {obj.user.last_name}".strip()
+        return obj.user.full_name or obj.user.email
 
 
 class PermissionAuditReportSerializer(serializers.ModelSerializer):
@@ -101,4 +100,4 @@ class PermissionAuditReportSerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
     def get_user_name(self, obj):
-        return f"{obj.user.first_name} {obj.user.last_name}".strip()
+        return obj.user.full_name or obj.user.email

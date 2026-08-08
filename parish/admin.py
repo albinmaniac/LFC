@@ -110,8 +110,7 @@ class UserPermissionAdmin(admin.ModelAdmin):
 
     search_fields = (
         "user__email",
-        "user__first_name",
-        "user__last_name",
+        "user__full_name",
     )
 
     autocomplete_fields = (

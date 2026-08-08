@@ -25,8 +25,7 @@ class UserReportService:
         )
         if search:
             queryset = queryset.filter(
-                Q(user__first_name__icontains=search) |
-                Q(user__last_name__icontains=search) |
+                Q(user__full_name__icontains=search) |
                 Q(user__email__icontains=search) |
                 Q(ip_address__icontains=search)
             )
@@ -55,8 +54,7 @@ class UserReportService:
         )
         if search:
             queryset = queryset.filter(
-                Q(first_name__icontains=search) |
-                Q(last_name__icontains=search) |
+                Q(full_name__icontains=search) |
                 Q(email__icontains=search) |
                 Q(phone_number__icontains=search)
             )
@@ -71,8 +69,7 @@ class UserReportService:
         )
         if search:
             queryset = queryset.filter(
-                Q(first_name__icontains=search) |
-                Q(last_name__icontains=search) |
+                Q(full_name__icontains=search) |
                 Q(email__icontains=search) |
                 Q(phone_number__icontains=search)
             )
@@ -88,8 +85,7 @@ class UserReportService:
         )
         if search:
             queryset = queryset.filter(
-                Q(user__first_name__icontains=search) |
-                Q(user__last_name__icontains=search) |
+                Q(user__full_name__icontains=search) |
                 Q(user__email__icontains=search) |
                 Q(ip_address__icontains=search)
             )
@@ -101,15 +97,13 @@ class UserReportService:
             UserPermission.objects
             .select_related("user")
             .order_by(
-                "user__first_name",
-                "user__last_name",
+                "user__full_name",
                 "permission",
             )
         )
         if search:
             queryset = queryset.filter(
-                Q(user__first_name__icontains=search) |
-                Q(user__last_name__icontains=search) |
+                Q(user__full_name__icontains=search) |
                 Q(user__email__icontains=search) |
                 Q(permission__icontains=search)
             )
