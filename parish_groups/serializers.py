@@ -79,7 +79,7 @@ class ParishGroupSerializer(serializers.ModelSerializer):
     def get_leader_name(self, obj):
 
         if obj.leader:
-            return obj.leader.full_name or obj.leader.email
+            return f"{obj.leader.first_name} {obj.leader.last_name}".strip()
 
         return None
 

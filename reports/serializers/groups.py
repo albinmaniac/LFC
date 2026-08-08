@@ -25,7 +25,7 @@ class GroupDirectoryReportSerializer(serializers.ModelSerializer):
     def get_leader_name(self, obj):
         if not obj.leader:
             return None
-        return obj.leader.full_name or obj.leader.email
+        return f"{obj.leader.first_name} {obj.leader.last_name}".strip()
 
     def get_total_members(self, obj):
         return obj.members.filter(is_active=True).count()
@@ -72,7 +72,7 @@ class GroupLeaderReportSerializer(serializers.ModelSerializer):
     def get_leader_name(self, obj):
         if not obj.leader:
             return None
-        return obj.leader.full_name or obj.leader.email
+        return f"{obj.leader.first_name} {obj.leader.last_name}".strip()
 
 
 class GroupStatisticsReportSerializer(serializers.ModelSerializer):
@@ -95,4 +95,4 @@ class GroupStatisticsReportSerializer(serializers.ModelSerializer):
     def get_leader_name(self, obj):
         if not obj.leader:
             return None
-        return obj.leader.full_name or obj.leader.email
+        return f"{obj.leader.first_name} {obj.leader.last_name}".strip()
