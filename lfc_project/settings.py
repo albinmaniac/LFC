@@ -23,7 +23,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
 
-DEBUG = ENVIRONMENT == "development"
+DEBUG = False
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
@@ -68,6 +68,7 @@ INSTALLED_APPS = [
     'notices',
     'gallery',
     'parish',
+    'reports',
 
     'django_extensions',
 ]
@@ -123,7 +124,7 @@ DATABASES = {
         "PASSWORD": os.getenv("DB_PASSWORD"),
         "HOST": os.getenv("DB_HOST"),
         "PORT": os.getenv("DB_PORT"),
-        "CONN_MAX_AGE": 600,
+        "CONN_MAX_AGE": 0 if ENVIRONMENT == "development" else 60,
         "OPTIONS": {
             "sslmode": "require",
         },

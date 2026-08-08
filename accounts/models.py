@@ -5,6 +5,7 @@ from datetime import timedelta
 from django.utils import timezone
 import uuid
 from .managers import UserManager
+from lfc_project.validators import validate_image
 
 class UserRole(models.TextChoices):
     SUPERADMIN = "SUPERADMIN", "Super Admin"
@@ -15,16 +16,28 @@ class UserRole(models.TextChoices):
 
 class User(AbstractUser):
     email = models.EmailField(unique=True)
-    phone_number = models.CharField(
-        max_length=20,
+    
+    full_name = models.CharField(
+        max_length=150,
         blank=True,
     )
+    phone_number = models.CharField(max_length=20,blank=True,)
 
-    role = models.CharField(
-        max_length=30,
-        choices=UserRole.choices,
-        default=UserRole.STAFF,
+    profile_photo = models.ImageField(upload_to="profiles/",blank=True,null=True,validators=[validate_image],)
+
+    address = models.TextField(blank=True,)
+
+    class Gender(models.TextChoices):
+        MALE = "MALE", "Male"
+        FEMALE = "FEMALE", "Female"
+        OTHER = "OTHER", "Other"
+
+    gender = models.CharField(
+        max_length=20,
+        choices=Gender.choices,
+        blank=True,
     )
+    role = models.CharField(max_length=30,choices=UserRole.choices,default=UserRole.STAFF,)
 
     is_email_verified = models.BooleanField(default=False)
 
@@ -45,11 +58,6 @@ class User(AbstractUser):
     REQUIRED_FIELDS = []
     objects = UserManager()
 
-    @property
-    def full_name(self):
-        return (
-            f"{self.first_name} {self.last_name}"
-        ).strip()
     
     class Meta:
         ordering = ["email"]
@@ -66,9 +74,19 @@ class Invitation(models.Model):
 
     email = models.EmailField(unique=True)
 
+    full_name = models.CharField(
+
+        max_length=150,
+
+    )
+
     role = models.CharField(
         max_length=30,
         choices=UserRole.choices,
+    )
+    permission_snapshot = models.JSONField(
+        default=list,
+        help_text="Snapshot of permission codes assigned at invitation time.",
     )
 
     token = models.CharField(
@@ -77,9 +95,12 @@ class Invitation(models.Model):
         editable=False,
     )
 
+    # Preserve audit history if the related user is archived or removed.
     invited_by = models.ForeignKey(
         User,
-        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
         related_name="sent_invitations",
     )
 
@@ -212,9 +233,12 @@ class UserSession(models.Model):
 
 class LoginHistory(models.Model):
 
+    # Preserve audit history if the related user is archived or removed.
     user = models.ForeignKey(
         User,
-        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
         related_name="login_history",
     )
 

@@ -4,12 +4,13 @@ from rest_framework.permissions import (IsAuthenticated,AllowAny,)
 from django.conf import settings
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from datetime import timedelta
 from django.db import transaction
 from django.db.models import Q
 from accounts.permissions import IsSuperAdmin
 from accounts.serializers import (
+    ForgotPasswordSerializer,
     UserSerializer,
+    UserProfileSerializer,
     LoginSerializer,
     LoginUserSerializer,
     InvitationCreateSerializer,
@@ -19,6 +20,7 @@ from accounts.serializers import (
     LoginHistorySerializer,
     ChangePasswordSerializer,
     ResetPasswordSerializer,
+    
 )
 from rest_framework import exceptions
 from accounts.email_service import InvitationService, PasswordResetService,SecurityEmailService,AccountEmailService
@@ -58,21 +60,16 @@ class PasswordResetUserListAPIView(generics.ListAPIView):
     def get_queryset(self):
         queryset = (
             User.objects.filter(is_active=True)
-            .only("id", "first_name", "last_name", "username", "email", "role", "is_active")
-            .order_by("first_name", "last_name", "email")
+            .only("id", "full_name", "username", "email", "role", "is_active")
+            .order_by("full_name", "email")
         )
-
-        # If the serializer reads invited_by, add select_related("invited_by")
-        if hasattr(self.serializer_class.Meta, "fields") and "invited_by" in getattr(self.serializer_class.Meta, "fields", []):
-            queryset = queryset.select_related("invited_by")
 
         search = self.request.query_params.get("search")
         role = self.request.query_params.get("role")
 
         if search:
             queryset = queryset.filter(
-                Q(first_name__icontains=search)
-                | Q(last_name__icontains=search)
+                Q(full_name__icontains=search)
                 | Q(email__icontains=search)
                 | Q(username__icontains=search)
             )
@@ -110,28 +107,47 @@ class CurrentUserAPIView(APIView):
             status=status.HTTP_200_OK,
         )
 
-    @transaction.atomic
-    def put(self, request):
-        serializer = UserSerializer(
+
+
+class MyProfileAPIView(APIView):
+    """
+    Retrieve and update the authenticated user's own profile.
+    Note: This endpoint is intentionally separate from CurrentUserAPIView so users can edit only self-service profile fields while admin-managed fields remain protected.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        serializer = UserProfileSerializer(
             request.user,
-            data=request.data,
-            partial=False,
+            context={"request": request},
         )
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(
+            {
+                "data": serializer.data,
+            },
+            status=status.HTTP_200_OK,
+        )
 
     @transaction.atomic
     def patch(self, request):
-        serializer = UserSerializer(
+        serializer = UserProfileSerializer(
             request.user,
             data=request.data,
             partial=True,
+            context={"request": request},
         )
+
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return Response(serializer.data, status=status.HTTP_200_OK)
 
+        return Response(
+            {
+                "message": "Profile updated successfully.",
+                "data": serializer.data,
+            },
+            status=status.HTTP_200_OK,
+        )
 
 # Change password endpoint
 class ChangePasswordAPIView(APIView):
@@ -315,6 +331,93 @@ class ResetPasswordAPIView(APIView):
             status=status.HTTP_200_OK,
         )
 
+class ForgotPasswordAPIView(APIView):
+    """
+    Public forgot-password endpoint.
+
+    Always returns the same response to prevent
+    email enumeration attacks.
+    """
+
+    permission_classes = [AllowAny]
+    throttle_classes = [PasswordResetRateThrottle]
+
+    @transaction.atomic
+    def post(self, request):
+        serializer = ForgotPasswordSerializer(
+            data=request.data,
+        )
+        serializer.is_valid(raise_exception=True)
+
+        email = serializer.validated_data["email"]
+
+        user = (
+            User.objects.filter(
+                email__iexact=email,
+                is_active=True,
+            )
+            .only("id", "email", "full_name")
+            .first()
+        )
+
+        # Always return the same response if the account
+        # doesn't exist or is inactive.
+        if user is None:
+            return Response(
+                {
+                    "message": (
+                        "If an account exists with this email, "
+                        "a password reset link has been sent."
+                    )
+                },
+                status=status.HTTP_200_OK,
+            )
+
+        PasswordResetToken.objects.filter(
+            user=user,
+            is_used=False,
+        ).update(is_used=True)
+
+        reset = PasswordResetToken.objects.create(
+            user=user,
+        )
+
+        frontend_url = getattr(
+            settings,
+            "ADMIN_FRONTEND_URL",
+            "http://localhost:5173",
+        )
+
+        reset_link = (
+            f"{frontend_url}/reset-password/{reset.token}"
+        )
+
+        try:
+            PasswordResetService.send_reset_email(
+                user=user,
+                reset_link=reset_link,
+                requested_ip=request.META.get(
+                    "REMOTE_ADDR",
+                    "Unknown",
+                ),
+            )
+        except Exception:
+            logger.exception(
+                "Failed to send forgot-password email to %s",
+                user.email,
+            )
+            transaction.set_rollback(True)
+
+        return Response(
+            {
+                "message": (
+                    "If an account exists with this email, "
+                    "a password reset link has been sent."
+                )
+            },
+            status=status.HTTP_200_OK,
+        )
+    
 
 class InvitationCreateAPIView(APIView):
     """Create a new invitation or list invitations (admin only)."""
@@ -332,13 +435,13 @@ class InvitationCreateAPIView(APIView):
 
         queryset = Invitation.objects.select_related("invited_by").only(
             "id",
+            "full_name",
             "email",
             "role",
             "status",
             "expires_at",
             "created_at",
-            "invited_by__first_name",
-            "invited_by__last_name",
+            "invited_by__full_name",
         ).order_by("-created_at")
 
         search = request.query_params.get("search")
@@ -346,7 +449,10 @@ class InvitationCreateAPIView(APIView):
         status_filter = request.query_params.get("status")
 
         if search:
-            queryset = queryset.filter(email__icontains=search)
+            queryset = queryset.filter(
+                Q(email__icontains=search)
+                | Q(full_name__icontains=search)
+            )
 
         if role:
             queryset = queryset.filter(role=role)
@@ -377,7 +483,9 @@ class InvitationCreateAPIView(APIView):
             invitation = InvitationService.create_invitation(
                 email=serializer.validated_data["email"],
                 role=serializer.validated_data["role"],
+                permission_snapshot=serializer.validated_data["permission_snapshot"],
                 invited_by=request.user,
+                full_name=serializer.validated_data["full_name"],
             )
         except Exception:
             logger.exception(
@@ -450,11 +558,13 @@ class AcceptInvitationAPIView(APIView):
                 "is_active": True,
                 "must_change_password": False,
                 "invited_by": invitation.invited_by,
+                "full_name": invitation.full_name,
             },
         )
 
         if not created:
             user.role = invitation.role
+            user.full_name = invitation.full_name
             user.is_active = True
             user.must_change_password = False
             user.invited_by = invitation.invited_by
@@ -465,11 +575,28 @@ class AcceptInvitationAPIView(APIView):
         user.save(update_fields=[
             "username",
             "role",
+            "full_name",
             "is_active",
             "must_change_password",
             "invited_by",
             "password",
         ])
+
+        # Replace any existing permissions with the invitation snapshot
+        UserPermission.objects.filter(
+            user=user,
+        ).delete()
+
+        if invitation.permission_snapshot:
+            UserPermission.objects.bulk_create(
+                [
+                    UserPermission(
+                        user=user,
+                        permission=permission,
+                    )
+                    for permission in invitation.permission_snapshot
+                ]
+            )
 
         invitation.status = Invitation.Status.ACCEPTED
         invitation.save(update_fields=["status"])
@@ -747,9 +874,7 @@ class ActiveSessionListAPIView(generics.ListAPIView):
     """List active sessions for the current user, or all if super admin."""
     serializer_class = UserSessionSerializer
     pagination_class = StandardPagination
-    permission_classes = [
-        IsAuthenticated,
-    ]
+    permission_classes = [IsAuthenticated,]
 
     def get_queryset(self):
         base_qs = UserSession.objects.select_related("user")
@@ -932,7 +1057,7 @@ class ForceLogoutAPIView(APIView):
             SecurityEmailService.send_force_logout_email(
                 user=session.user,
                 logged_out_at=timezone.now(),
-                triggered_by=request.user.get_full_name() or request.user.username,
+                triggered_by=request.user.full_name or request.user.username,
                 reason="Your session was terminated by the administrator.",
                 login_url=f"{frontend_url}/login",
             )

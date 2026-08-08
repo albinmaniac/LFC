@@ -17,16 +17,19 @@ from parish.models import UserPermission
 
 
 class UserSerializer(serializers.ModelSerializer):
+    invited_by_name = serializers.SerializerMethodField()
     class Meta:
         model = User
         fields = [
             "id",
             "email",
-            "username",
-            "first_name",
-            "last_name",
+            "full_name",
             "phone_number",
+            "profile_photo",
+            "address",
+            "gender",
             "role",
+            "invited_by_name",
             "is_email_verified",
             "last_login",
             "date_joined",
@@ -36,10 +39,46 @@ class UserSerializer(serializers.ModelSerializer):
             "id",
             "email",
             "role",
+            "invited_by_name",
             "is_email_verified",
             "last_login",
             "date_joined",
         ]
+
+    def get_invited_by_name(self, obj):
+        if obj.invited_by:
+
+            return obj.invited_by.full_name
+
+        return None
+
+class UserProfileSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = User
+        fields = (
+            "full_name",
+            "phone_number",
+            "profile_photo",
+            "address",
+            "gender",
+        )
+
+        extra_kwargs = {
+            "full_name": {"required": False, "allow_blank": False},
+            "phone_number": {"required": False, "allow_blank": True},
+            "address": {"required": False, "allow_blank": True},
+            "gender": {"required": False, "allow_blank": True},
+            "profile_photo": {"required": False},
+        }
+
+    def validate_full_name(self, value):
+        value = value.strip()
+        if not value:
+            raise serializers.ValidationError(
+                "Full name cannot be empty."
+            )
+        return value
 
 
 class ChangePasswordSerializer(serializers.Serializer):
@@ -48,7 +87,7 @@ class ChangePasswordSerializer(serializers.Serializer):
     confirm_password = serializers.CharField(write_only=True, min_length=8)
 
     def validate(self, attrs):
-        request = self.context.get("request")
+        request = self.context["request"]
         user = request.user
 
         if not user.check_password(attrs["current_password"]):
@@ -118,11 +157,25 @@ class ResetPasswordSerializer(serializers.Serializer):
 
 
 class InvitationCreateSerializer(serializers.ModelSerializer):
+    permission_snapshot = serializers.ListField(
+        child=serializers.ChoiceField(
+            choices=UserPermission.PermissionChoices.choices,
+        ),
+        write_only=True,
+        allow_empty=False,
+    )
+
     class Meta:
         model = Invitation
-        fields = ["email", "role"]
+        fields = [
+            "full_name",
+            "email",
+            "role",
+            "permission_snapshot",
+        ]
 
     def validate_email(self, value):
+        value = value.strip().lower()
         if User.objects.filter(email=value).exists():
             raise serializers.ValidationError(
                 "A user with this email already exists."
@@ -143,8 +196,14 @@ class InvitationCreateSerializer(serializers.ModelSerializer):
     def validate_role(self, value):
         if value not in UserRole.values:
             raise serializers.ValidationError("Invalid role selected.")
-
         return value
+
+    def validate_permission_snapshot(self, value):
+        if not value:
+            raise serializers.ValidationError(
+                "Select at least one permission."
+            )
+        return list(dict.fromkeys(value))
 
 
 class InvitationListSerializer(serializers.ModelSerializer):
@@ -154,6 +213,7 @@ class InvitationListSerializer(serializers.ModelSerializer):
         model = Invitation
         fields = (
             "id",
+            "full_name",
             "email",
             "role",
             "status",
@@ -206,7 +266,8 @@ class LoginSerializer(serializers.Serializer):
     )
 
     def validate(self, attrs):
-        email = attrs.get("email")
+        email = attrs.get("email", "").strip().lower()
+        attrs["email"] = email
         password = attrs.get("password")
 
         user = authenticate(
@@ -230,16 +291,13 @@ class LoginSerializer(serializers.Serializer):
 
 # LoginUserSerializer
 class LoginUserSerializer(serializers.ModelSerializer):
-    full_name = serializers.CharField(read_only=True)
-
     class Meta:
         model = User
         fields = (
             "id",
             "email",
-            "first_name",
-            "last_name",
             "full_name",
+            "profile_photo",
             "role",
         )
         read_only_fields = fields
@@ -283,7 +341,8 @@ class UserSessionSerializer(
         read_only_fields = fields
 
     def get_user_name(self, obj):
-        return obj.user.full_name
+
+        return obj.user.full_name if obj.user else "Deleted User"
 
     def get_browser(self, obj):
 
@@ -309,11 +368,10 @@ class UserSessionSerializer(
             return "Tablet"
 
         return ua.device.family
-    
 
     def get_role(self, obj):
 
-        return obj.user.role
+        return obj.user.role if obj.user else None
 
 
 # LoginHistorySerializer
@@ -335,7 +393,11 @@ class LoginHistorySerializer(
 
     def get_user_name(self, obj):
 
-        return obj.user.full_name
+        return obj.user.full_name if obj.user else "Deleted User"
+
+    def get_user_email(self, obj):
+
+        return obj.user.email if obj.user else "Deleted User"
 
     class Meta:
 
@@ -381,4 +443,5 @@ class LoginHistorySerializer(
             return "Tablet"
 
         return ua.device.family
+    
     

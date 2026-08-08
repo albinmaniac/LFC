@@ -92,15 +92,17 @@ class EmailService:
 class InvitationService:
 
     @staticmethod
-    def create_invitation(*, email, role, invited_by):
+    def create_invitation(*, full_name, email, role, permission_snapshot, invited_by):
         Invitation.objects.filter(
             email__iexact=email,
             status=Invitation.Status.PENDING,
         ).update(status=Invitation.Status.CANCELLED)
 
         invitation = Invitation.objects.create(
+            full_name=full_name,
             email=email,
             role=role,
+            permission_snapshot=permission_snapshot,
             invited_by=invited_by,
         )
 
@@ -143,8 +145,8 @@ class InvitationService:
             subject="You're Invited to Join LFC Church",
             template_name="emails/invitation_email.html",
             context={
-                "invitee_name": invitation.email,
-                "inviter_name": invitation.invited_by.get_full_name(),
+                "invitee_name": invitation.full_name or invitation.email,
+                "inviter_name": invitation.invited_by.full_name or invitation.invited_by.email,
                 "role_display": invitation.get_role_display(),
                 "accept_invitation_url": invitation_link,
                 "expires_at": invitation.expires_at.strftime(
@@ -165,7 +167,7 @@ class InvitationService:
             subject="Invitation Cancelled",
             template_name="emails/invitation_cancelled_email.html",
             context={
-                "invitee_name": invitation.email,
+                "invitee_name": invitation.full_name or invitation.email,
                 "cancelled_by": cancelled_by.get_full_name(),
                 "role_display": invitation.get_role_display(),
                 "cancelled_at": timezone.now(),

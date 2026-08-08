@@ -33,6 +33,7 @@ urlpatterns = [
     path("api/events/",include("events.urls"),),
     path("api/notices/",include("notices.urls"),),
     path("api/gallery/",include("gallery.urls"),),
+    path("api/reports/",include("reports.urls"),),
     
 
     path("api/token/",TokenObtainPairView.as_view(),name="token_obtain_pair",),

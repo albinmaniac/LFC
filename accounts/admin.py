@@ -7,16 +7,14 @@ from .models import User, Invitation,LoginHistory,UserSession
 class UserAdmin(admin.ModelAdmin):
     list_display = (
         "email",
-        "first_name",
-        "last_name",
+        "full_name",
         "role",
         "is_active",
     )
 
     search_fields = (
         "email",
-        "first_name",
-        "last_name",
+        "full_name",
     )
 
     list_filter = (
